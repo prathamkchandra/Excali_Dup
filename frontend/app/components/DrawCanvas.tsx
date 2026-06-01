@@ -4,19 +4,21 @@ import { useRef, useEffect } from "react";
 
 function DrawCanvas() {
 
-    const canvasRef = useRef(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    const isDrawing = useRef(false);
+    const isDrawing = useRef(false);    
 
     useEffect(() => {
 
         const canvas = canvasRef.current;
+        if(!canvas) return;
+
+        const ctx = canvas.getContext("2d");
+        if(!ctx) return;
 
         canvas.width = window.innerWidth;
 
         canvas.height = window.innerHeight;
-
-        const ctx = canvas.getContext("2d");
 
         ctx.fillStyle = "white";
 
@@ -38,8 +40,10 @@ function DrawCanvas() {
     function handleMouseDown(e) {
 
         const canvas = canvasRef.current;
+        if(!canvas) return;
 
         const ctx = canvas.getContext("2d");
+         if(!ctx) return;
 
         isDrawing.current = true;
 
@@ -55,10 +59,13 @@ function DrawCanvas() {
     function handleMouseMove(e) {
 
         if (!isDrawing.current) return;
-
+    
         const canvas = canvasRef.current;
+        if(!canvas) return;
+
 
         const ctx = canvas.getContext("2d");
+         if(!ctx) return;
 
         ctx.lineTo(
             e.clientX,
