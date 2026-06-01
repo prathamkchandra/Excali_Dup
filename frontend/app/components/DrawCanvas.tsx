@@ -3,100 +3,77 @@
 import { useRef, useEffect } from "react";
 
 function DrawCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawing = useRef(false);
 
-    const isDrawing = useRef(false);    
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    useEffect(() => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-        const canvas = canvasRef.current;
-        if(!canvas) return;
+    canvas.width = window.innerWidth;
 
-        const ctx = canvas.getContext("2d");
-        if(!ctx) return;
+    canvas.height = window.innerHeight;
 
-        canvas.width = window.innerWidth;
+    ctx.fillStyle = "white";
 
-        canvas.height = window.innerHeight;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = "white";
+    ctx.lineWidth = 3;
 
-        ctx.fillRect(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+    ctx.lineCap = "round";
 
-        ctx.lineWidth = 3;
+    ctx.strokeStyle = "black";
+  }, []);
 
-        ctx.lineCap = "round";
+  function handleMouseDown(e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-        ctx.strokeStyle = "black";
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    }, []);
+    isDrawing.current = true;
 
-    function handleMouseDown(e) {
+    ctx.beginPath();
 
-        const canvas = canvasRef.current;
-        if(!canvas) return;
+    ctx.moveTo(e.clientX, e.clientY);
+  }
 
-        const ctx = canvas.getContext("2d");
-         if(!ctx) return;
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) {
+    if (!isDrawing.current) return;
 
-        isDrawing.current = true;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-        ctx.beginPath();
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-        ctx.moveTo(
-            e.clientX,
-            e.clientY
-        );
+    ctx.lineTo(e.clientX, e.clientY);
 
-    }
+    ctx.stroke();
+  }
 
-    function handleMouseMove(e) {
+  function handleMouseUp() {
+    isDrawing.current = false;
+  }
 
-        if (!isDrawing.current) return;
-    
-        const canvas = canvasRef.current;
-        if(!canvas) return;
-
-
-        const ctx = canvas.getContext("2d");
-         if(!ctx) return;
-
-        ctx.lineTo(
-            e.clientX,
-            e.clientY
-        );
-
-        ctx.stroke();
-
-    }
-
-    function handleMouseUp() {
-
-        isDrawing.current = false;
-
-    }
-
-    return (
-
-        <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            style={{
-                border:"1px solid black",
-                display:"block"
-            }}
-        />
-
-    )
-
+  return (
+    <canvas
+      ref={canvasRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      style={{
+        border: "1px solid black",
+        display: "block",
+      }}
+    />
+  );
 }
 
 export default DrawCanvas;
+
