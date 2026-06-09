@@ -1,9 +1,25 @@
-import DrawCanvas from "./components/DrawCanvas";
+"use client";
 
-export default function Page() {
+import { useState } from "react";
+import Toolbar from "./components/Toolbar";
+import DrawCanvas from "./components/DrawCanvas";
+import { tool } from "@/app/types/Tool";
+
+export default function Home() {
+
+  const [tool, setTool] =
+    useState<tool>("pencil");
+
   return (
-    <main style={{ padding: 20 }}>
-     <DrawCanvas/>
-    </main>
+    <>
+      <Toolbar
+        tool={tool}
+        setTool={setTool}
+      />
+
+      <DrawCanvas
+        tool={tool}
+      />
+    </>
   );
 }

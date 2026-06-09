@@ -1,102 +1,202 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { tool } from "@/app/types/Tool";
 
-function DrawCanvas() {
+type Point = {
+  x: number;
+  y: number;
+};
 
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+type Shape = {
+  type: "pencil";
+  points: Point[];
+};
 
-    const isDrawing = useRef(false);    
+type DrawCanvasProps = {
+  tool: tool;
+};
 
-    useEffect(() => {
+export default function DrawCanvas({
+  tool,
+}: DrawCanvasProps) {
+  const canvasRef =
+    useRef<HTMLCanvasElement | null>(null);
 
-        const canvas = canvasRef.current;
-        if(!canvas) return;
+  const isDrawing =
+    useRef(false);
 
-        const ctx = canvas.getContext("2d");
-        if(!ctx) return;
+  const shapesRef =
+    useRef<Shape[]>([]);
 
-        canvas.width = window.innerWidth;
+  const currentShape =
+    useRef<Shape | null>(null);
 
-        canvas.height = window.innerHeight;
+  useEffect(() => {
+    const canvas = canvasRef.current;
 
-        ctx.fillStyle = "white";
+    if (!canvas) return;
 
-        ctx.fillRect(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+    const ctx =
+      canvas.getContext("2d");
 
-        ctx.lineWidth = 3;
+    if (!ctx) return;
 
-        ctx.lineCap = "round";
+    canvas.width =
+      window.innerWidth;
 
-        ctx.strokeStyle = "black";
+    canvas.height =
+      window.innerHeight;
 
-    }, []);
+    ctx.fillStyle = "black";
 
-    function handleMouseDown(e) {
+    ctx.fillRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
-        const canvas = canvasRef.current;
-        if(!canvas) return;
+    ctx.lineWidth = 3;
 
-        const ctx = canvas.getContext("2d");
-         if(!ctx) return;
+    ctx.lineCap = "round";
 
-        isDrawing.current = true;
+    ctx.strokeStyle = "white";
+  }, []);
 
-        ctx.beginPath();
+  function drawShapes(
+    shapes: Shape[]
+  ) {
+    const canvas =
+      canvasRef.current;
 
-        ctx.moveTo(
-            e.clientX,
-            e.clientY
-        );
+    if (!canvas) return;
 
-    }
+    const ctx =
+      canvas.getContext("2d");
 
-    function handleMouseMove(e) {
+    if (!ctx) return;
 
-        if (!isDrawing.current) return;
-    
-        const canvas = canvasRef.current;
-        if(!canvas) return;
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
+    ctx.fillStyle = "black";
 
-        const ctx = canvas.getContext("2d");
-         if(!ctx) return;
+    ctx.fillRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
-        ctx.lineTo(
-            e.clientX,
-            e.clientY
-        );
+    ctx.strokeStyle = "white";
 
-        ctx.stroke();
+    shapes.forEach((shape) => {
+      ctx.beginPath();
 
-    }
+      shape.points.forEach(
+        (point, index) => {
+          if (index === 0) {
+            ctx.moveTo(
+              point.x,
+              point.y
+            );
+          } else {
+            ctx.lineTo(
+              point.x,
+              point.y
+            );
+          }
+        }
+      );
 
-    function handleMouseUp() {
+      ctx.stroke();
+    });
+  }
 
-        isDrawing.current = false;
+  function handleMouseDown(
+    e: React.MouseEvent<HTMLCanvasElement>
+  ) {
 
-    }
+    if (tool !== "pencil")
+      return;
 
-    return (
+    isDrawing.current = true;
 
-        <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            style={{
-                border:"1px solid black",
-                display:"block"
-            }}
-        />
+    currentShape.current = {
+      type: "pencil",
+      points: [
+        {
+          x: e.clientX,
+          y: e.clientY,
+        },
+      ],
+    };
+  }
 
+  function handleMouseMove(
+    e: React.MouseEvent<HTMLCanvasElement>
+  ) {
+    if (
+      !isDrawing.current ||
+      !currentShape.current
     )
+      return;
 
+    currentShape.current.points.push({
+      x: e.clientX,
+      y: e.clientY,
+    });
+
+    const temp = [
+      ...shapesRef.current,
+      currentShape.current,
+    ];
+
+    drawShapes(temp);
+  }
+
+  function handleMouseUp() {
+    if (
+      !isDrawing.current ||
+      !currentShape.current
+    )
+      return;
+
+    isDrawing.current = false;
+
+    shapesRef.current.push(
+      currentShape.current
+    );
+
+    currentShape.current = null;
+
+    drawShapes(
+      shapesRef.current
+    );
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      onMouseDown={
+        handleMouseDown
+      }
+      onMouseMove={
+        handleMouseMove
+      }
+      onMouseUp={
+        handleMouseUp
+      }
+      style={{
+        border:
+          "2px solid white",
+        display: "block",
+      }}
+    />
+  );
 }
-
-export default DrawCanvas;
