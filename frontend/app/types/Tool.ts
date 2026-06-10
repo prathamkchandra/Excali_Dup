@@ -1,4 +1,4 @@
-export type tool = | "pencil"
+export type Tool = | "pencil"
   | "rectangle"
   | "square"
   | "circle"

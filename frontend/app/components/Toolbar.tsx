@@ -1,11 +1,11 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { tool } from "@/app/types/Tool";
+import { Tool } from "@/app/types/Tool";
 
 type ToolbarProps = {
-  tool: tool;
-  setTool: Dispatch<SetStateAction<tool>>;
+  tool: Tool;
+  setTool: Dispatch<SetStateAction<Tool>>;
 };
 
 export default function Toolbar({
@@ -13,7 +13,7 @@ export default function Toolbar({
   setTool,
 }: ToolbarProps) {
 
-  const tools: tool[] = [
+  const tools: Tool[] = [
     "pencil",
     "rectangle",
     "square",

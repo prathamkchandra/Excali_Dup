@@ -1,20 +1,32 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { tool } from "@/app/types/Tool";
+import { Tool } from "@/app/types/Tool";
 
 type Point = {
   x: number;
   y: number;
 };
 
-type Shape = {
+type PencilShape = {
   type: "pencil";
   points: Point[];
 };
 
+type RectangleShape = {
+  type: "rectangle";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type Shape =
+  | PencilShape
+  | RectangleShape;
+
 type DrawCanvasProps = {
-  tool: tool;
+  tool: Tool;
 };
 
 export default function DrawCanvas({
@@ -96,36 +108,58 @@ export default function DrawCanvas({
     ctx.strokeStyle = "white";
 
     shapes.forEach((shape) => {
-      ctx.beginPath();
 
-      shape.points.forEach(
-        (point, index) => {
-          if (index === 0) {
-            ctx.moveTo(
-              point.x,
-              point.y
-            );
-          } else {
-            ctx.lineTo(
-              point.x,
-              point.y
-            );
-          }
+  if (shape.type === "pencil") {
+
+    ctx.beginPath();
+
+    shape.points.forEach(
+      (point, index) => {
+
+        if (index === 0) {
+
+          ctx.moveTo(
+            point.x,
+            point.y
+          );
+
+        } else {
+
+          ctx.lineTo(
+            point.x,
+            point.y
+          );
+
         }
-      );
 
-      ctx.stroke();
-    });
+      }
+    );
+
+    ctx.stroke();
+
   }
 
+  if (shape.type === "rectangle") {
+
+    ctx.strokeRect(
+      shape.x,
+      shape.y,
+      shape.width,
+      shape.height
+    );
+
+  }
+
+});
+}
+
   function handleMouseDown(
-    e: React.MouseEvent<HTMLCanvasElement>
-  ) {
+  e: React.MouseEvent<HTMLCanvasElement>
+) {
 
-    if (tool !== "pencil")
-      return;
+  isDrawing.current = true;
 
-    isDrawing.current = true;
+  if (tool === "pencil") {
 
     currentShape.current = {
       type: "pencil",
@@ -138,7 +172,18 @@ export default function DrawCanvas({
     };
   }
 
-  function handleMouseMove(
+  if (tool === "rectangle") {
+
+    currentShape.current = {
+      type: "rectangle",
+      x: e.clientX,
+      y: e.clientY,
+      width: 0,
+      height: 0,
+    };
+  }
+}
+    function handleMouseMove(
     e: React.MouseEvent<HTMLCanvasElement>
   ) {
     if (
@@ -147,10 +192,32 @@ export default function DrawCanvas({
     )
       return;
 
-    currentShape.current.points.push({
-      x: e.clientX,
-      y: e.clientY,
-    });
+    if (
+  currentShape.current.type ===
+  "pencil"
+) {
+
+  currentShape.current.points.push({
+    x: e.clientX,
+    y: e.clientY,
+  });
+
+}
+
+if (
+  currentShape.current.type ===
+  "rectangle"
+) {
+
+  currentShape.current.width =
+    e.clientX -
+    currentShape.current.x;
+
+  currentShape.current.height =
+    e.clientY -
+    currentShape.current.y;
+
+}
 
     const temp = [
       ...shapesRef.current,
@@ -179,7 +246,6 @@ export default function DrawCanvas({
       shapesRef.current
     );
   }
-
   return (
     <canvas
       ref={canvasRef}
@@ -192,6 +258,7 @@ export default function DrawCanvas({
       onMouseUp={
         handleMouseUp
       }
+
       style={{
         border:
           "2px solid white",
