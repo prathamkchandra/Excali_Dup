@@ -226,6 +226,29 @@ export default function DrawCanvas({
     e: React.MouseEvent<HTMLCanvasElement>
   ) {
 
+    if (tool === "eraser") {
+
+  const index =
+    findShapeAt(
+      e.clientX,
+      e.clientY
+    );
+
+  if (index !== null) {
+
+    shapesRef.current.splice(
+      index,
+      1
+    );
+
+    drawShapes(
+      shapesRef.current
+    );
+
+  }
+
+  return;
+}
     isDrawing.current = true;
 
     if (tool === "pencil") {
@@ -286,7 +309,7 @@ export default function DrawCanvas({
 
         if (
           shape.type ===
-          "rectangle" || shape.type === "circle" ||   shape.type === "square"
+          "rectangle" || shape.type === "circle" ||   shape.type === "square" 
         ) {
 
           dragOffset.current = {
@@ -317,6 +340,30 @@ export default function DrawCanvas({
   ) {
 
     // SELECT + DRAG MODE
+
+    if (tool === "eraser") {
+
+  const index =
+    findShapeAt(
+      e.clientX,
+      e.clientY
+    );
+
+  if (index !== null) {
+
+    shapesRef.current.splice(
+      index,
+      1
+    );
+
+    drawShapes(
+      shapesRef.current
+    );
+
+  }
+
+  return;
+}
     if (
       tool === "select" &&
       isDraggingShape.current &&
@@ -497,6 +544,33 @@ export default function DrawCanvas({
       const shape =
         shapesRef.current[i];
 
+        if (shape.type === "pencil") {
+
+  const xs = shape.points.map(
+    point => point.x
+  );
+
+  const ys = shape.points.map(
+    point => point.y
+  );
+
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  if (
+    x >= minX &&
+    x <= maxX &&
+    y >= minY &&
+    y <= maxY
+  ) {
+    return i;
+  }
+
+}
+
       if (
         shape.type ===
         "rectangle"
@@ -581,6 +655,13 @@ export default function DrawCanvas({
         border:
           "2px solid white",
         display: "block",
+      cursor:
+  tool === "select"
+    ? "grab"
+    : ["eraser", "rectangle", "circle", "square"]
+        .includes(tool)
+      ? "crosshair"
+      : "default",
       }}
     />
   );
