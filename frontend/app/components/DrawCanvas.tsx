@@ -36,7 +36,7 @@ type CircleShape = {
 
 type Shape =
   | PencilShape
-  | RectangleShape | SquareShape |CircleShape;
+  | RectangleShape | SquareShape | CircleShape;
 
 
 type DrawCanvasProps = {
@@ -57,6 +57,19 @@ export default function DrawCanvas({
 
   const currentShape =
     useRef<Shape | null>(null);
+
+  const selectedShape =
+    useRef<number | null>(null);
+
+  const isDraggingShape =
+    useRef(false);
+
+  const dragOffset =
+    useRef({
+      x: 0,
+      y: 0,
+    });
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -119,201 +132,326 @@ export default function DrawCanvas({
       canvas.height
     );
 
-    ctx.strokeStyle = "white";
+    shapes.forEach((shape, index) => {
+      ctx.strokeStyle =
+        selectedShape.current ===
+          index
+          ? "yellow"
+          : "white";
+      if (shape.type === "pencil") {
 
-    shapes.forEach((shape) => {
+        ctx.beginPath();
 
-  if (shape.type === "pencil") {
+        shape.points.forEach(
+          (point, index) => {
 
-    ctx.beginPath();
+            if (index === 0) {
 
-    shape.points.forEach(
-      (point, index) => {
+              ctx.moveTo(
+                point.x,
+                point.y
+              );
 
-        if (index === 0) {
+            } else {
 
-          ctx.moveTo(
-            point.x,
-            point.y
-          );
+              ctx.lineTo(
+                point.x,
+                point.y
+              );
 
-        } else {
+            }
 
-          ctx.lineTo(
-            point.x,
-            point.y
-          );
+          }
+        );
 
-        }
+        ctx.stroke();
 
       }
-    );
 
-    ctx.stroke();
+      if (shape.type === "rectangle") {
 
+        ctx.strokeRect(
+          shape.x,
+          shape.y,
+          shape.width,
+          shape.height
+        );
+      }
+
+      if (shape.type === "square") {
+
+        ctx.strokeRect(
+          shape.x,
+          shape.y,
+          shape.size,
+          shape.size
+        );
+
+      }
+      if (shape.type === "circle") {
+
+        ctx.beginPath();
+
+        ctx.arc(
+          shape.x,
+          shape.y,
+          shape.radius,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.stroke();
+
+      }
+
+      if (
+        selectedShape.current ===
+        index
+      ) {
+
+        ctx.strokeStyle =
+          "yellow";
+
+      } else {
+
+        ctx.strokeStyle =
+          "white";
+
+      }
+
+    });
   }
-
-  if (shape.type === "rectangle") {
-
-    ctx.strokeRect(
-      shape.x,
-      shape.y,
-      shape.width,
-      shape.height
-    );}
-
-  if (shape.type === "square") {
-
-  ctx.strokeRect(
-    shape.x,
-    shape.y,
-    shape.size,
-    shape.size
-  );
-
-}
-if (shape.type === "circle") {
-
-  ctx.beginPath();
-
-  ctx.arc(
-    shape.x,
-    shape.y,
-    shape.radius,
-    0,
-    Math.PI * 2
-  );
-
-  ctx.stroke();
-
-}
-
-
-});
-}
 
   function handleMouseDown(
-  e: React.MouseEvent<HTMLCanvasElement>
-) { 
+    e: React.MouseEvent<HTMLCanvasElement>
+  ) {
 
-  isDrawing.current = true;
+    isDrawing.current = true;
 
-  if (tool === "pencil") {
+    if (tool === "pencil") {
 
-    currentShape.current = {
-      type: "pencil",
-      points: [
-        {
-          x: e.clientX,
-          y: e.clientY,
-        },
-      ],
-    };
+      currentShape.current = {
+        type: "pencil",
+        points: [
+          {
+            x: e.clientX,
+            y: e.clientY,
+          },
+        ],
+      };
+    }
+
+    if (tool === "rectangle") {
+
+      currentShape.current = {
+        type: "rectangle",
+        x: e.clientX,
+        y: e.clientY,
+        width: 0,
+        height: 0,
+      };
+    }
+    if (tool === "square") {
+
+      currentShape.current = {
+        type: "square",
+        x: e.clientX,
+        y: e.clientY,
+        size: 0,
+      };
+    }
+    if (tool === "circle") {
+      currentShape.current = {
+        type: "circle",
+        x: e.clientX,
+        y: e.clientY,
+        radius: 0,
+      };
+    }
+    if (tool === "select") {
+
+      const index =
+        findShapeAt(
+          e.clientX,
+          e.clientY
+        );
+
+      selectedShape.current =
+        index;
+
+      if (index !== null) {
+
+        const shape =
+          shapesRef.current[index];
+
+        if (
+          shape.type ===
+          "rectangle" || shape.type === "circle" ||   shape.type === "square"
+        ) {
+
+          dragOffset.current = {
+            x:
+              e.clientX -
+              shape.x,
+            y:
+              e.clientY -
+              shape.y,
+          };
+
+          isDraggingShape.current =
+            true;
+        }
+      }
+
+      drawShapes(
+        shapesRef.current
+      );
+
+      return;
+    }
+
   }
 
-  if (tool === "rectangle") {
-
-    currentShape.current = {
-      type: "rectangle",
-      x: e.clientX,
-      y: e.clientY,
-      width: 0,
-      height: 0,
-    };
-  }
-  if (tool === "square") {
-
-  currentShape.current = {
-    type: "square",
-    x: e.clientX,
-    y: e.clientY,
-    size: 0,
-  };
-}
-if (tool === "circle") {
-  currentShape.current = {
-    type: "circle",
-    x: e.clientX,
-    y: e.clientY,
-    radius: 0,
-  };
-}
-
-}
   function handleMouseMove(
     e: React.MouseEvent<HTMLCanvasElement>
   ) {
+
+    // SELECT + DRAG MODE
+    if (
+      tool === "select" &&
+      isDraggingShape.current &&
+      selectedShape.current !== null
+    ) {
+
+      const shape =
+        shapesRef.current[
+        selectedShape.current
+        ];
+
+      if (
+        shape.type === "rectangle"
+      ) {
+
+        shape.x =
+          e.clientX -
+          dragOffset.current.x;
+
+        shape.y =
+          e.clientY -
+          dragOffset.current.y;
+
+      }
+
+      if (
+        shape.type === "circle"
+      ) {
+
+        shape.x =
+          e.clientX -
+          dragOffset.current.x;
+
+        shape.y =
+          e.clientY -
+          dragOffset.current.y;
+
+      }
+      if (
+        shape.type === "square"
+      ) {
+
+        shape.x =
+          e.clientX -
+          dragOffset.current.x;
+
+        shape.y =
+          e.clientY -
+          dragOffset.current.y;
+
+      }
+
+      drawShapes(
+        shapesRef.current
+      );
+
+      return;
+    }
+
+    // DRAWING MODE
     if (
       !isDrawing.current ||
       !currentShape.current
-    )
+    ) {
       return;
+    }
 
     if (
-  currentShape.current.type ===
-  "pencil"
-) {
+      currentShape.current.type ===
+      "pencil"
+    ) {
 
-  currentShape.current.points.push({
-    x: e.clientX,
-    y: e.clientY,
-  });
-}
+      currentShape.current.points.push({
+        x: e.clientX,
+        y: e.clientY,
+      });
 
-if (
-  currentShape.current.type ===
-  "rectangle"
-) {
+    }
 
-  currentShape.current.width =
-    e.clientX -
-    currentShape.current.x;
+    if (
+      currentShape.current.type ===
+      "rectangle"
+    ) {
 
-  currentShape.current.height =
-    e.clientY -
-    currentShape.current.y;
+      currentShape.current.width =
+        e.clientX -
+        currentShape.current.x;
 
-}
-if (
-  currentShape.current.type ===
-  "square"
-) {
+      currentShape.current.height =
+        e.clientY -
+        currentShape.current.y;
 
-  const dx =
-    e.clientX -
-    currentShape.current.x;
+    }
 
-  const dy =
-    e.clientY -
-    currentShape.current.y;
+    if (
+      currentShape.current.type ===
+      "square"
+    ) {
 
-  currentShape.current.size =
-    Math.max(
-      Math.abs(dx),
-      Math.abs(dy)
-    );
+      const dx =
+        e.clientX -
+        currentShape.current.x;
 
-}
-if (
-  currentShape.current.type ===
-  "circle"
-) {
+      const dy =
+        e.clientY -
+        currentShape.current.y;
 
-  const dx =
-    e.clientX -
-    currentShape.current.x;
+      currentShape.current.size =
+        Math.max(
+          Math.abs(dx),
+          Math.abs(dy)
+        );
 
-  const dy =
-    e.clientY -
-    currentShape.current.y;
+    }
 
-  currentShape.current.radius =
-    Math.sqrt(
-      dx * dx +
-      dy * dy
-    );
+    if (
+      currentShape.current.type ===
+      "circle"
+    ) {
 
-}
+      const dx =
+        e.clientX -
+        currentShape.current.x;
+
+      const dy =
+        e.clientY -
+        currentShape.current.y;
+
+      currentShape.current.radius =
+        Math.sqrt(
+          dx * dx +
+          dy * dy
+        );
+
+    }
 
     const temp = [
       ...shapesRef.current,
@@ -322,18 +460,16 @@ if (
 
     drawShapes(temp);
   }
-
-
-
-
   function handleMouseUp() {
     if (
       !isDrawing.current ||
       !currentShape.current
     )
       return;
+    isDraggingShape.current = false;
 
-    isDrawing.current = false;
+    isDrawing.current = true;
+    console.log("Dragging started");
 
     shapesRef.current.push(
       currentShape.current
@@ -344,6 +480,89 @@ if (
     drawShapes(
       shapesRef.current
     );
+  }
+
+  function findShapeAt(
+    x: number,
+    y: number
+  ) {
+
+    for (
+      let i =
+        shapesRef.current.length - 1;
+      i >= 0;
+      i--
+    ) {
+
+      const shape =
+        shapesRef.current[i];
+
+      if (
+        shape.type ===
+        "rectangle"
+      ) {
+
+        if (
+          x >= shape.x &&
+          x <=
+          shape.x +
+          shape.width &&
+          y >= shape.y &&
+          y <=
+          shape.y +
+          shape.height
+        ) {
+
+          return i;
+
+        }
+
+      }
+
+      if (
+        shape.type === "square"
+      ) {
+
+        if (
+          x >= shape.x &&
+          x <= shape.x + shape.size &&
+          y >= shape.y &&
+          y <= shape.y + shape.size
+        ) {
+          return i;
+        }
+      }
+
+      if (
+        shape.type === "circle"
+      ) {
+
+        const dx =
+          x - shape.x;
+
+        const dy =
+          y - shape.y;
+
+        const distance =
+          Math.sqrt(
+            dx * dx +
+            dy * dy
+          );
+
+        if (
+          distance <=
+          shape.radius
+        ) {
+
+          return i;
+
+        }
+
+      }
+
+    }
+
+    return null;
   }
   return (
     <canvas
