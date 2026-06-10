@@ -27,10 +27,16 @@ type SquareShape = {
   y: number;
   size: number;
 };
+type CircleShape = {
+  type: "circle";
+  x: number;
+  y: number;
+  radius: number;
+};
 
 type Shape =
   | PencilShape
-  | RectangleShape | SquareShape;
+  | RectangleShape | SquareShape |CircleShape;
 
 
 type DrawCanvasProps = {
@@ -166,6 +172,22 @@ export default function DrawCanvas({
   );
 
 }
+if (shape.type === "circle") {
+
+  ctx.beginPath();
+
+  ctx.arc(
+    shape.x,
+    shape.y,
+    shape.radius,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.stroke();
+
+}
+
 
 });
 }
@@ -207,8 +229,16 @@ export default function DrawCanvas({
     y: e.clientY,
     size: 0,
   };
-
 }
+if (tool === "circle") {
+  currentShape.current = {
+    type: "circle",
+    x: e.clientX,
+    y: e.clientY,
+    radius: 0,
+  };
+}
+
 }
   function handleMouseMove(
     e: React.MouseEvent<HTMLCanvasElement>
@@ -264,6 +294,27 @@ if (
     );
 
 }
+if (
+  currentShape.current.type ===
+  "circle"
+) {
+
+  const dx =
+    e.clientX -
+    currentShape.current.x;
+
+  const dy =
+    e.clientY -
+    currentShape.current.y;
+
+  currentShape.current.radius =
+    Math.sqrt(
+      dx * dx +
+      dy * dy
+    );
+
+}
+
     const temp = [
       ...shapesRef.current,
       currentShape.current,
