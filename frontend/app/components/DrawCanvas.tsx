@@ -21,9 +21,17 @@ type RectangleShape = {
   height: number;
 };
 
+type SquareShape = {
+  type: "square";
+  x: number;
+  y: number;
+  size: number;
+};
+
 type Shape =
   | PencilShape
-  | RectangleShape;
+  | RectangleShape | SquareShape;
+
 
 type DrawCanvasProps = {
   tool: Tool;
@@ -69,7 +77,7 @@ export default function DrawCanvas({
       canvas.height
     );
 
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
 
     ctx.lineCap = "round";
 
@@ -146,16 +154,25 @@ export default function DrawCanvas({
       shape.y,
       shape.width,
       shape.height
-    );
+    );}
 
-  }
+  if (shape.type === "square") {
+
+  ctx.strokeRect(
+    shape.x,
+    shape.y,
+    shape.size,
+    shape.size
+  );
+
+}
 
 });
 }
 
   function handleMouseDown(
   e: React.MouseEvent<HTMLCanvasElement>
-) {
+) { 
 
   isDrawing.current = true;
 
@@ -182,8 +199,18 @@ export default function DrawCanvas({
       height: 0,
     };
   }
+  if (tool === "square") {
+
+  currentShape.current = {
+    type: "square",
+    x: e.clientX,
+    y: e.clientY,
+    size: 0,
+  };
+
 }
-    function handleMouseMove(
+}
+  function handleMouseMove(
     e: React.MouseEvent<HTMLCanvasElement>
   ) {
     if (
@@ -201,7 +228,6 @@ export default function DrawCanvas({
     x: e.clientX,
     y: e.clientY,
   });
-
 }
 
 if (
@@ -218,7 +244,26 @@ if (
     currentShape.current.y;
 
 }
+if (
+  currentShape.current.type ===
+  "square"
+) {
 
+  const dx =
+    e.clientX -
+    currentShape.current.x;
+
+  const dy =
+    e.clientY -
+    currentShape.current.y;
+
+  currentShape.current.size =
+    Math.max(
+      Math.abs(dx),
+      Math.abs(dy)
+    );
+
+}
     const temp = [
       ...shapesRef.current,
       currentShape.current,
@@ -226,6 +271,9 @@ if (
 
     drawShapes(temp);
   }
+
+
+
 
   function handleMouseUp() {
     if (
