@@ -283,6 +283,7 @@ export default function DrawCanvas({
         radius: 0,
       };
     }
+    
    if (tool === "select") {
 
   const index =
@@ -291,8 +292,9 @@ export default function DrawCanvas({
       e.clientY
     );
 
-  selectedShape.current =
+  selectedShape.current = 
     index;
+    
 
   // CLICKED EMPTY SPACE
   if (index === null) {
@@ -324,6 +326,21 @@ export default function DrawCanvas({
     isDraggingShape.current =
       true;
   }
+
+  if (shape.type === "pencil") {
+
+  dragOffset.current = {
+    x:
+      e.clientX -
+      shape.points[0].x,
+    y:
+      e.clientY -
+      shape.points[0].y,
+  };
+
+  isDraggingShape.current =
+    true;
+}
 
   drawShapes(
     shapesRef.current
@@ -412,10 +429,39 @@ export default function DrawCanvas({
           dragOffset.current.y;
 
       }
+      if (
+  shape.type === "pencil"
+) {
+
+  const targetX =
+    e.clientX -
+    dragOffset.current.x;
+
+  const targetY =
+    e.clientY -
+    dragOffset.current.y;
+
+  const dx =
+    targetX -
+    shape.points[0].x;
+
+  const dy =
+    targetY -
+    shape.points[0].y;
+
+  shape.points.forEach(
+    (point) => {
+      point.x += dx;
+      point.y += dy;
+    }
+  );
+
+}
 
       drawShapes(
         shapesRef.current
       );
+
 
       return;
     }
@@ -502,6 +548,8 @@ export default function DrawCanvas({
 
     drawShapes(temp);
   }
+
+
   function handleMouseUp() {
      isDraggingShape.current = false;
     if (
