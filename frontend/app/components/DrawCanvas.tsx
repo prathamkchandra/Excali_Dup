@@ -355,29 +355,7 @@ export default function DrawCanvas({
     e: React.MouseEvent<HTMLCanvasElement>
   ) {
     // SELECT + DRAG MODE
-    if (tool === "eraser") {
-
-  const index =
-    findShapeAt(
-      e.clientX,
-      e.clientY
-    );
-
-  if (index !== null) {
-
-    shapesRef.current.splice(
-      index,
-      1
-    );
-
-    drawShapes(
-      shapesRef.current
-    );
-
-  }
-
-  return;
-}
+   
     if (
       tool === "select" &&
       isDraggingShape.current &&
@@ -702,7 +680,7 @@ export default function DrawCanvas({
       cursor:
   tool === "select"
     ? "grab"
-    : ["eraser", "rectangle", "circle", "square"]
+    : ["rectangle", "circle", "square"]
         .includes(tool)
       ? "crosshair"
       : "default",
