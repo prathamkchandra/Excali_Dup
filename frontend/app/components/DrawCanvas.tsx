@@ -57,7 +57,6 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
     x: 0,
     y: 0,
   });
-
   useEffect(() => {
     const canvas = canvasRef.current;
 
@@ -84,7 +83,6 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
 
   function drawShapes(shapes: Shape[]) {
     const canvas = canvasRef.current;
-
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
@@ -100,8 +98,7 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
     shapes.forEach((shape, index) => {
       ctx.strokeStyle = selectedShape.current === index ? "yellow" : "white";
       if (shape.type === "pencil") {
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+        ctx.beginPath();
 
         shape.points.forEach((point, index) => {
           if (index === 0) {
@@ -125,7 +122,6 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
         ctx.beginPath();
 
         ctx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
-
         ctx.stroke();
       }
 
@@ -188,26 +184,43 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
         radius: 0,
       };
     }
+
     if (tool === "select") {
       const index = findShapeAt(e.clientX, e.clientY);
 
       selectedShape.current = index;
 
-      if (index !== null) {
-        const shape = shapesRef.current[index];
+      // CLICKED EMPTY SPACE
+      if (index === null) {
+        isDraggingShape.current = false;
 
-        if (
-          shape.type === "rectangle" ||
-          shape.type === "circle" ||
-          shape.type === "square"
-        ) {
-          dragOffset.current = {
-            x: e.clientX - shape.x,
-            y: e.clientY - shape.y,
-          };
+        drawShapes(shapesRef.current);
 
-          isDraggingShape.current = true;
-        }
+        return;
+      }
+
+      const shape = shapesRef.current[index];
+
+      if (
+        shape.type === "rectangle" ||
+        shape.type === "square" ||
+        shape.type === "circle"
+      ) {
+        dragOffset.current = {
+          x: e.clientX - shape.x,
+          y: e.clientY - shape.y,
+        };
+
+        isDraggingShape.current = true;
+      }
+
+      if (shape.type === "pencil") {
+        dragOffset.current = {
+          x: e.clientX - shape.points[0].x,
+          y: e.clientY - shape.points[0].y,
+        };
+
+        isDraggingShape.current = true;
       }
 
       drawShapes(shapesRef.current);
@@ -219,17 +232,6 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
   function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
     // SELECT + DRAG MODE
 
-    if (tool === "eraser") {
-      const index = findShapeAt(e.clientX, e.clientY);
-
-      if (index !== null) {
-        shapesRef.current.splice(index, 1);
-
-        drawShapes(shapesRef.current);
-      }
-
-      return;
-    }
     if (
       tool === "select" &&
       isDraggingShape.current &&
@@ -253,19 +255,31 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
 
         shape.y = e.clientY - dragOffset.current.y;
       }
+      if (shape.type === "pencil") {
+        const targetX = e.clientX - dragOffset.current.x;
+
+        const targetY = e.clientY - dragOffset.current.y;
+
+        const dx = targetX - shape.points[0].x;
+
+        const dy = targetY - shape.points[0].y;
+
+        shape.points.forEach((point) => {
+          point.x += dx;
+          point.y += dy;
+        });
+      }
 
       drawShapes(shapesRef.current);
 
       return;
     }
-
     // DRAWING MODE
     if (!isDrawing.current || !currentShape.current) {
       return;
     }
 
     if (currentShape.current.type === "pencil") {
-      console.log("pencil");
       currentShape.current.points.push({
         x: e.clientX,
         y: e.clientY,
@@ -290,7 +304,6 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
       const dx = e.clientX - currentShape.current.x;
 
       const dy = e.clientY - currentShape.current.y;
-
       currentShape.current.radius = Math.sqrt(dx * dx + dy * dy);
     }
 
@@ -298,7 +311,9 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
 
     drawShapes(temp);
   }
+
   function handleMouseUp() {
+    isDraggingShape.current = false;
     if (!isDrawing.current || !currentShape.current) return;
     isDraggingShape.current = false;
 
@@ -330,19 +345,6 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
         if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
           return i;
         }
-
-        return (
-          <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            style={{
-              border: "1px solid black",
-              display: "block",
-            }}
-          />
-        );
       }
 
       if (shape.type === "rectangle") {
@@ -394,7 +396,7 @@ export default function DrawCanvas({ tool }: DrawCanvasProps) {
         cursor:
           tool === "select"
             ? "grab"
-            : ["eraser", "rectangle", "circle", "square"].includes(tool)
+            : ["rectangle", "circle", "square"].includes(tool)
               ? "crosshair"
               : "default",
       }}
