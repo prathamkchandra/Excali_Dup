@@ -38,7 +38,7 @@ export default function Toolbar({
 }: ToolbarProps) {
   return (
     <div
-      className="fixed top-3 left-1/2 z-50 flex max-w-[calc(100vw-16px)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-xl border border-white/10 bg-[#1e1e1e]/95 p-1.5 shadow-lg backdrop-blur sm:top-4"
+      className="fixed top-3 left-1/2 z-50 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#1e1e1e]/95 py-3 px-5 shadow-xl backdrop-blur sm:top-6 sm:gap-3 sm:py-3 sm:px-6"
       role="toolbar"
       aria-label="Drawing tools"
     >
@@ -52,14 +52,14 @@ export default function Toolbar({
             aria-label={label}
             aria-pressed={active}
             className={[
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors sm:h-10 sm:w-10",
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
               active
-                ? "bg-amber-400 text-black"
-                : "text-white/70 hover:bg-white/10 hover:text-white",
+                ? "bg-amber-400 text-black shadow-md"
+                : "text-white/80 hover:bg-white/10 hover:text-white",
             ].join(" ")}
           >
             <Icon
-              size={18}
+              size={22}
               strokeWidth={2}
               aria-hidden="true"
             />

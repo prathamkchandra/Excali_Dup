@@ -62,27 +62,32 @@ export function getShapeBounds(shape: Shape): Bounds {
   }
 }
 
+// Tests whether a WORLD-space point hits a shape. `padding` (in world units)
+// inflates the hit area, so the eraser can remove shapes the pointer only
+// comes close to instead of requiring an exact pixel hit.
 export function shapeContainsPoint(
   shape: Shape,
   x: number,
-  y: number
+  y: number,
+  padding = 0
 ): boolean {
   switch (shape.type) {
-    case "pencil": {
-      const b = getShapeBounds(shape);
-      return x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY;
-    }
-
+    case "pencil":
     case "rectangle":
     case "square": {
       const b = getShapeBounds(shape);
-      return x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY;
+      return (
+        x >= b.minX - padding &&
+        x <= b.maxX + padding &&
+        y >= b.minY - padding &&
+        y <= b.maxY + padding
+      );
     }
 
     case "circle": {
       const dx = x - shape.x;
       const dy = y - shape.y;
-      return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
+      return Math.sqrt(dx * dx + dy * dy) <= shape.radius + padding;
     }
   }
 }
@@ -106,16 +111,17 @@ export function getResizeHandles(
 }
 
 // Returns the handle under a SCREEN-space point (handles are hit-tested in
-// screen space so their grab area stays a constant ~8px).
+// screen space so their grab area stays a constant ~8px regardless of zoom).
 export function hitTestResizeHandle(
   shape: Shape,
   camera: Camera,
+  zoom: number,
   screenX: number,
   screenY: number,
   hitRadius = 8
 ): ResizeHandleId | null {
   for (const handle of getResizeHandles(shape)) {
-    const pos = worldToScreen(camera, handle.x, handle.y);
+    const pos = worldToScreen(camera, zoom, handle.x, handle.y);
     const dx = screenX - pos.x;
     const dy = screenY - pos.y;
     if (dx * dx + dy * dy <= hitRadius * hitRadius) {

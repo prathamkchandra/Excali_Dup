@@ -8,28 +8,34 @@ import type { Point } from "@/app/types/Shape";
 // camera floats over). These two helpers are the only place those spaces
 // meet, so every other module can pick one space and stay consistent.
 //
-// With no zoom, the two spaces differ by a pure translation: the screen is
-// just the world shifted by the camera. screenToWorld adds the camera
-// offset, worldToScreen subtracts it.
+// The render applies ctx.scale(zoom, zoom) then ctx.translate(-camera.x,
+// -camera.y), so a world point lands on screen at:
+//
+//   screenX = (worldX - camera.x) * zoom
+//   screenY = (worldY - camera.y) * zoom
+//
+// and the inverse is used to convert mouse input back to world space.
 
 export function screenToWorld(
   camera: Camera,
+  zoom: number,
   screenX: number,
   screenY: number
 ): Point {
   return {
-    x: screenX + camera.x,
-    y: screenY + camera.y,
+    x: screenX / zoom + camera.x,
+    y: screenY / zoom + camera.y,
   };
 }
 
 export function worldToScreen(
   camera: Camera,
+  zoom: number,
   worldX: number,
   worldY: number
 ): Point {
   return {
-    x: worldX - camera.x,
-    y: worldY - camera.y,
+    x: (worldX - camera.x) * zoom,
+    y: (worldY - camera.y) * zoom,
   };
 }

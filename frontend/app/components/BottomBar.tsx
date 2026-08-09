@@ -1,10 +1,15 @@
 "use client";
 
 import { Undo2, Redo2 } from "lucide-react";
+import ZoomControls from "./ZoomControls";
 
 type BottomBarProps = {
+  zoom: number;
   onUndo: () => void;
   onRedo: () => void;
+  setZoom: (zoom: number) => void;
+  zoomBy: (factor: number) => void;
+  fitToScreen: () => void;
 };
 
 const iconButtonClass = [
@@ -13,8 +18,12 @@ const iconButtonClass = [
 ].join(" ");
 
 export default function BottomBar({
+  zoom,
   onUndo,
   onRedo,
+  setZoom,
+  zoomBy,
+  fitToScreen,
 }: BottomBarProps) {
   return (
     <div
@@ -39,6 +48,13 @@ export default function BottomBar({
       >
         <Redo2 size={16} aria-hidden="true" />
       </button>
+
+      <ZoomControls
+        zoom={zoom}
+        setZoom={setZoom}
+        zoomBy={zoomBy}
+        fitToScreen={fitToScreen}
+      />
     </div>
   );
 }
