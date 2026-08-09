@@ -1,9 +1,5 @@
 "use client";
 
-<<<<<<< HEAD
-import { useRef, useEffect } from "react";
-import { Tool } from "@/app/types/Tool";
-=======
 import {
   useRef,
   useEffect,
@@ -11,12 +7,15 @@ import {
   useImperativeHandle,
   memo,
 } from "react";
+
 import type { Ref } from "react";
 import { Tool } from "@/app/types/Tool";
 import type { Shape } from "@/app/types/Shape";
 import type { Camera } from "@/app/utils/camera";
+
 import { screenToWorld } from "@/app/utils/coordinates";
 import { syncBufferToCss } from "@/app/utils/canvas";
+
 import {
   fillBackground,
   drawGrid,
@@ -24,931 +23,202 @@ import {
   drawSelection,
   drawEraserCursor,
 } from "@/app/utils/draw";
+
 import {
   shapeContainsPoint,
   hitTestResizeHandle,
   resizeCursor,
 } from "@/app/utils/geometry";
-import type { ResizeHandleId } from "@/app/utils/geometry";
+
 import {
   translateShape,
   resizeShape,
   normalizeRect,
 } from "@/app/utils/shapes";
 
-// --------------------------------------------------------------------------
-// Imperative API exposed to the parent so the BottomBar can trigger
-// undo/redo. The history and camera live next to the shapes in refs inside
-// this component, so they are surfaced as methods instead of props.
-// --------------------------------------------------------------------------
+import type { ResizeHandleId } from "@/app/utils/geometry";
+
 export type DrawCanvasHandle = {
   undo: () => void;
   redo: () => void;
 };
->>>>>>> b21c283 (fix:solved infinity canvas window)
-
-type Point = {
-  x: number;
-  y: number;
-};
-
-type PencilShape = {
-  type: "pencil";
-  points: Point[];
-};
-
-type RectangleShape = {
-  type: "rectangle" | "square";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-type CircleShape = {
-  type: "circle";
-  x: number;
-  y: number;
-  radius: number;
-};
-
-type Shape = PencilShape | RectangleShape | CircleShape;
 
 type Props = {
   tool: Tool;
   ref?: Ref<DrawCanvasHandle>;
 };
 
-<<<<<<< HEAD
-export default function DrawCanvas({ tool }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-=======
-// The active gesture. Everything is pointer-coordinate driven; each gesture
-// type mutates a different thing (a new shape, a dragged shape, a resized
-// shape, or the camera itself).
 type Gesture = "draw" | "drag" | "resize" | "pan" | null;
 
-// Static cursor for a tool, before any hover/pan overrides:
-//   - pencil: a custom pencil SVG, hotspot at the tip (3, 28)
-//   - eraser: the OS cursor is hidden; a circle is drawn on the canvas instead
-//   - select: default arrow
-//   - shapes (rectangle/square/circle): crosshair
-function baseCursorForTool(t: Tool): string {
-  switch (t) {
-    case "pencil":
-      return "url('/cursors/pencil.svg') 3 28, auto";
-    case "eraser":
-      return "none";
-    case "select":
-      return "default";
-    default:
-      return "crosshair";
-  }
-}
+function DrawCanvas({ tool, ref }: Props) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-function DrawCanvas({
-  tool,
-  ref,
-}: DrawCanvasProps) {
-  const canvasRef =
-    useRef<HTMLCanvasElement | null>(null);
->>>>>>> b21c283 (fix:solved infinity canvas window)
-
-  const isDrawing = useRef(false);
   const shapesRef = useRef<Shape[]>([]);
   const currentShape = useRef<Shape | null>(null);
-
-<<<<<<< HEAD
   const selectedShape = useRef<number | null>(null);
-  const isDragging = useRef(false);
+
+  const cameraRef = useRef<Camera>({ x: 0, y: 0 });
+
+  const gestureRef = useRef<Gesture>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
-=======
-  const shapesRef =
-    useRef<Shape[]>([]);
 
-  const currentShape =
-    useRef<Shape | null>(null);
+  const mousePos = useRef({ x: 0, y: 0 });
+  const mouseOverCanvas = useRef(false);
 
-  const selectedShape =
-    useRef<number | null>(null);
+  const history = useRef<Shape[][]>([]);
+  const redoStack = useRef<Shape[][]>([]);
 
-  // ------------------------------------------------------------------
-  // Camera (infinite pan only - no zoom).
-  //
-  // Shapes live in an infinite WORLD plane; this object maps that plane onto
-  // the viewport by pure translation:
-  //
-  //   screenX = worldX - camera.x
-  //   screenY = worldY - camera.y
-  //
-  // It is a ref (never React state) so pan floods mutate it without
-  // triggering re-renders - the rAF-driven draw loop picks up the new values
-  // every frame.
-  // ------------------------------------------------------------------
-  const cameraRef =
-    useRef<Camera>({ x: 0, y: 0 });
+  const rafId = useRef<number | null>(null);
+  const needsRender = useRef(false);
 
-  // ------------------------------------------------------------------
-  // Undo / Redo history (deep copies via JSON round-trip, same as before).
-  // ------------------------------------------------------------------
-  const history =
-    useRef<Shape[][]>([]);
+  const toolRef = useRef(tool);
 
-  const redoStack =
-    useRef<Shape[][]>([]);
-
-  // ------------------------------------------------------------------
-  // Render scheduling (rAF-coalesced, as before).
-  // ------------------------------------------------------------------
-  const needsRender =
-    useRef(false);
-
-  const rafId =
-    useRef<number | null>(null);
-
-  // The eraser cursor is drawn on the canvas (the OS cursor is hidden for
-  // that tool), so the render loop needs the pointer's SCREEN position and
-  // whether it is currently over the canvas.
-  const mousePos =
-    useRef({ x: 0, y: 0 });
-
-  const mouseOverCanvas =
-    useRef(false);
-
-  const render = useCallback(() => {
-    needsRender.current = false;
->>>>>>> b21c283 (fix:solved infinity canvas window)
-
-  // 🎯 INIT CANVAS
   useEffect(() => {
+    toolRef.current = tool;
+  }, [tool]);
+
+  // 🎯 RENDER LOOP
+  const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-<<<<<<< HEAD
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    drawShapes(shapesRef.current);
-  }, []);
-
-  // 🎯 DRAW ALL SHAPES
-  function drawShapes(shapes: Shape[]) {
-=======
-    // Size the pixel buffer to the CSS box * dpr. This leaves the transform
-    // in "screen space"; nothing in the render loop changes it (no zoom), so
-    // every shape below is drawn with the camera offset applied manually.
     syncBufferToCss(canvas);
 
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
-    const camera = cameraRef.current;
 
-    // Draw order matters: 1) clear + fill the background, 2) grid, 3) shapes.
-    // fillBackground() paints over the ENTIRE canvas, so every previous frame
-    // (and any pixels wiped by a buffer resize) is fully replaced here - a
-    // full repaint each frame means nothing is ever left over or missing.
     fillBackground(ctx, width, height);
-    drawGrid(ctx, camera, width, height);
+    drawGrid(ctx, cameraRef.current, width, height);
 
-    // While drawing, the in-progress shape is shown on top of everything.
     const allShapes = currentShape.current
       ? [...shapesRef.current, currentShape.current]
       : shapesRef.current;
-    drawShapes(ctx, allShapes, camera, selectedShape.current);
+
+    drawShapes(ctx, allShapes, cameraRef.current, selectedShape.current);
 
     if (selectedShape.current !== null) {
       const shape = shapesRef.current[selectedShape.current];
-      if (shape) drawSelection(ctx, camera, shape);
+      if (shape) drawSelection(ctx, cameraRef.current, shape);
     }
 
-    // The eraser cursor is visual feedback only and is drawn last, on top of
-    // everything. It never touches the shapes array - real erasing happens in
-    // eraseAt() on mousedown.
     if (
       mouseOverCanvas.current &&
-      gestureRef.current !== "pan" &&
       toolRef.current === "eraser"
     ) {
-      drawEraserCursor(
-        ctx,
-        mousePos.current.x,
-        mousePos.current.y
-      );
+      drawEraserCursor(ctx, mousePos.current.x, mousePos.current.y);
     }
+
+    needsRender.current = false;
   }, []);
 
   const scheduleRender = useCallback(() => {
     needsRender.current = true;
-    if (rafId.current !== null) return;
+    if (rafId.current) return;
+
     rafId.current = requestAnimationFrame(() => {
       rafId.current = null;
       if (needsRender.current) render();
     });
   }, [render]);
 
-  // The current tool is mirrored in a ref so the registered handlers always
-  // see the latest value without needing to be re-registered.
-  const toolRef =
-    useRef<Tool>(tool);
-
-  useEffect(() => {
-    toolRef.current = tool;
-  }, [tool]);
-
-  // ------------------------------------------------------------------
-  // Undo / Redo
-  // ------------------------------------------------------------------
-  const commitHistory = useCallback(() => {
-    history.current.push(
-      JSON.parse(JSON.stringify(shapesRef.current))
-    );
+  // 🧠 HISTORY
+  const commitHistory = () => {
+    history.current.push(JSON.parse(JSON.stringify(shapesRef.current)));
     redoStack.current = [];
-  }, []);
+  };
 
-  const handleUndo = useCallback(() => {
-    if (history.current.length === 0) return;
+  const undo = () => {
+    if (!history.current.length) return;
 
-    redoStack.current.push(
-      JSON.parse(JSON.stringify(shapesRef.current))
-    );
-
-    shapesRef.current =
-      history.current.pop() || [];
-    render();
-  }, [render]);
-
-  const handleRedo = useCallback(() => {
-    if (redoStack.current.length === 0) return;
-
-    history.current.push(
-      JSON.parse(JSON.stringify(shapesRef.current))
-    );
-
-    shapesRef.current =
-      redoStack.current.pop() || [];
-    render();
-  }, [render]);
-
-  // ------------------------------------------------------------------
-  // Gesture state
-  // ------------------------------------------------------------------
-  const gestureRef =
-    useRef<Gesture>(null);
-
-  const spaceDown =
-    useRef(false);
-
-  const dragOffset =
-    useRef({ x: 0, y: 0 });
-
-  const dragMoved =
-    useRef(false);
-
-  const resizeHandle =
-    useRef<ResizeHandleId>("br");
-
-  const resizeStart =
-    useRef<string>("");
-
-  const resizeChanged =
-    useRef(false);
-
-  const panLast =
-    useRef({ x: 0, y: 0 });
-
-  // True while a two-finger touch gesture is panning the camera.
-  const touchPanActive =
-    useRef(false);
-
-  // ------------------------------------------------------------------
-  // Coordinate helpers (screen <-> world).
-  //
-  // FIX: mouse coordinate accuracy.
-  //   screenPoint() converts a raw mouse event (clientX/clientY) into
-  //   canvas-local SCREEN coordinates. The canvas is position:fixed and the
-  //   page never scrolls (html/body are overflow:hidden), so
-  //   getBoundingClientRect() is already viewport-relative and so is
-  //   clientX/clientY - therefore NO window.scrollX/scrollY offset is added.
-  //   Adding it here would double-count the offset and break drawing after a
-  //   pan. (The + scrollX/scrollY form is only correct for a canvas that is
-  //   NOT fixed and actually scrolls with the page.)
-  //   Panning is handled by the camera, which is applied on the world side
-  //   via screenToWorld(), so accuracy is preserved no matter how far the
-  //   viewport has been panned.
-  // ------------------------------------------------------------------
-  const screenPoint = useCallback(
-    (clientX: number, clientY: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return { x: 0, y: 0 };
-      const rect = canvas.getBoundingClientRect();
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
-    },
-    []
-  );
-
-  const worldPoint = useCallback(
-    (clientX: number, clientY: number) => {
-      const s = screenPoint(clientX, clientY);
-      return screenToWorld(cameraRef.current, s.x, s.y);
-    },
-    [screenPoint]
-  );
-
-  const findShapeAt = useCallback(
-    (x: number, y: number): number | null => {
-      for (
-        let i = shapesRef.current.length - 1;
-        i >= 0;
-        i--
-      ) {
-        if (shapeContainsPoint(shapesRef.current[i], x, y)) {
-          return i;
-        }
-      }
-      return null;
-    },
-    []
-  );
-
-  // ------------------------------------------------------------------
-  // Cursor handling (mutates canvas.style.cursor - no React re-renders).
-  // Space/pan overrides grab/grabbing; everything else uses the tool's
-  // static cursor (custom pencil SVG, hidden eraser cursor, etc.).
-  // ------------------------------------------------------------------
-  const refreshCursor = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    canvas.style.cursor =
-      spaceDown.current || gestureRef.current === "pan"
-        ? gestureRef.current === "pan"
-          ? "grabbing"
-          : "grab"
-        : baseCursorForTool(toolRef.current);
-  }, []);
-
-  const updateCursor = useCallback(
-    (clientX: number, clientY: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      if (
-        spaceDown.current ||
-        gestureRef.current === "pan"
-      ) {
-        canvas.style.cursor =
-          gestureRef.current === "pan"
-            ? "grabbing"
-            : "grab";
-        return;
-      }
-
-      const t = toolRef.current;
-
-      if (t === "select") {
-        if (selectedShape.current !== null) {
-          const shape =
-            shapesRef.current[selectedShape.current];
-          if (shape) {
-            const s = screenPoint(clientX, clientY);
-            const handle = hitTestResizeHandle(
-              shape,
-              cameraRef.current,
-              s.x,
-              s.y
-            );
-            if (handle) {
-              canvas.style.cursor = resizeCursor(handle);
-              return;
-            }
-          }
-          canvas.style.cursor = "grab";
-          return;
-        }
-
-        const w = worldPoint(clientX, clientY);
-        canvas.style.cursor =
-          findShapeAt(w.x, w.y) !== null ? "grab" : "default";
-        return;
-      }
-
-      canvas.style.cursor = baseCursorForTool(t);
-    },
-    [screenPoint, worldPoint, findShapeAt]
-  );
-
-  // ------------------------------------------------------------------
-  // Tool change: refresh the cursor immediately (so switching to the eraser
-  // hides the OS cursor / shows the drawn circle even before the mouse
-  // moves) and repaint once.
-  // ------------------------------------------------------------------
-  useEffect(() => {
-    refreshCursor();
+    redoStack.current.push(shapesRef.current);
+    shapesRef.current = history.current.pop()!;
     scheduleRender();
-  }, [tool, refreshCursor, scheduleRender]);
+  };
 
-  // ------------------------------------------------------------------
-  // Gesture implementations
-  // ------------------------------------------------------------------
-  const beginDraw = useCallback(
-    (point: { x: number; y: number }) => {
-      const t = toolRef.current;
+  const redo = () => {
+    if (!redoStack.current.length) return;
 
-      if (t === "pencil") {
-        currentShape.current = {
-          type: "pencil",
-          points: [{ x: point.x, y: point.y }],
-        };
-      } else if (t === "rectangle") {
-        currentShape.current = {
-          type: "rectangle",
-          x: point.x,
-          y: point.y,
-          width: 0,
-          height: 0,
-        };
-      } else if (t === "square") {
-        currentShape.current = {
-          type: "square",
-          x: point.x,
-          y: point.y,
-          size: 0,
-        };
-      } else if (t === "circle") {
-        currentShape.current = {
-          type: "circle",
-          x: point.x,
-          y: point.y,
-          radius: 0,
-        };
-      } else {
-        return;
-      }
-
-      selectedShape.current = null;
-      gestureRef.current = "draw";
-      scheduleRender();
-    },
-    [scheduleRender]
-  );
-
-  const updateDraw = useCallback(
-    (point: { x: number; y: number }) => {
-      const shape = currentShape.current;
-      if (!shape) return;
-
-      if (shape.type === "pencil") {
-        shape.points.push({ x: point.x, y: point.y });
-      } else if (shape.type === "rectangle") {
-        shape.width = point.x - shape.x;
-        shape.height = point.y - shape.y;
-      } else if (shape.type === "square") {
-        shape.size = Math.max(
-          Math.abs(point.x - shape.x),
-          Math.abs(point.y - shape.y)
-        );
-      } else if (shape.type === "circle") {
-        shape.radius = Math.hypot(
-          point.x - shape.x,
-          point.y - shape.y
-        );
-      }
-
-      scheduleRender();
-    },
-    [scheduleRender]
-  );
-
-  const endDraw = useCallback(() => {
-    const shape = currentShape.current;
-    if (shape) {
-      // Rectangles may have negative width/height from dragging up/left;
-      // normalize so the stored shape always has a top-left origin.
-      if (shape.type === "rectangle") normalizeRect(shape);
-      shapesRef.current.push(shape);
-      currentShape.current = null;
-      commitHistory();
-    }
-    gestureRef.current = null;
+    history.current.push(shapesRef.current);
+    shapesRef.current = redoStack.current.pop()!;
     scheduleRender();
-  }, [commitHistory, scheduleRender]);
+  };
 
-  const beginDrag = useCallback(
-    (index: number, point: { x: number; y: number }) => {
-      selectedShape.current = index;
+  useImperativeHandle(ref, () => ({
+    undo,
+    redo,
+  }));
 
-      const shape = shapesRef.current[index];
-      const anchor =
-        shape.type === "pencil"
-          ? shape.points[0]
-          : { x: shape.x, y: shape.y };
+  // 🧠 HELPERS
+  const screenPoint = (x: number, y: number) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return { x: x - rect.left, y: y - rect.top };
+  };
 
-      dragOffset.current = {
-        x: point.x - anchor.x,
-        y: point.y - anchor.y,
-      };
-      dragMoved.current = false;
-      gestureRef.current = "drag";
-      scheduleRender();
-    },
-    [scheduleRender]
-  );
+  const worldPoint = (x: number, y: number) => {
+    const s = screenPoint(x, y);
+    return screenToWorld(cameraRef.current, s.x, s.y);
+  };
 
-  const updateDrag = useCallback(
-    (point: { x: number; y: number }) => {
-      if (selectedShape.current === null) return;
-      const shape = shapesRef.current[selectedShape.current];
-      if (!shape) return;
-
-      const anchor =
-        shape.type === "pencil"
-          ? shape.points[0]
-          : { x: shape.x, y: shape.y };
-
-      const targetX = point.x - dragOffset.current.x;
-      const targetY = point.y - dragOffset.current.y;
-      const dx = targetX - anchor.x;
-      const dy = targetY - anchor.y;
-
-      if (dx !== 0 || dy !== 0) {
-        translateShape(shape, dx, dy);
-        dragMoved.current = true;
-      }
-
-      scheduleRender();
-    },
-    [scheduleRender]
-  );
-
-  const endDrag = useCallback(() => {
-    if (dragMoved.current) commitHistory();
-    dragMoved.current = false;
-    gestureRef.current = null;
-    scheduleRender();
-  }, [commitHistory, scheduleRender]);
-
-  const beginResize = useCallback(
-    (handle: ResizeHandleId) => {
-      if (selectedShape.current === null) return;
-      const shape = shapesRef.current[selectedShape.current];
-      if (!shape) return;
-
-      resizeHandle.current = handle;
-      resizeStart.current = JSON.stringify(shape);
-      resizeChanged.current = false;
-      gestureRef.current = "resize";
-    },
-    []
-  );
-
-  const updateResize = useCallback(
-    (point: { x: number; y: number }) => {
-      if (selectedShape.current === null) return;
-      const shape = shapesRef.current[selectedShape.current];
-      if (!shape) return;
-
-      resizeShape(shape, resizeHandle.current, point);
-      if (JSON.stringify(shape) !== resizeStart.current) {
-        resizeChanged.current = true;
-      }
-
-      scheduleRender();
-    },
-    [scheduleRender]
-  );
-
-  const endResize = useCallback(() => {
-    if (resizeChanged.current) commitHistory();
-    resizeChanged.current = false;
-    gestureRef.current = null;
-    scheduleRender();
-  }, [commitHistory, scheduleRender]);
-
-  const beginPan = useCallback(
-    (sx: number, sy: number) => {
-      gestureRef.current = "pan";
-      panLast.current = { x: sx, y: sy };
-    },
-    []
-  );
-
-  const updatePan = useCallback(
-    (sx: number, sy: number) => {
-      const camera = cameraRef.current;
-      const dx = sx - panLast.current.x;
-      const dy = sy - panLast.current.y;
-      camera.x -= dx;
-      camera.y -= dy;
-      panLast.current = { x: sx, y: sy };
-      scheduleRender();
-    },
-    [scheduleRender]
-  );
-
-  const endPan = useCallback(() => {
-    gestureRef.current = null;
-  }, []);
-
-  const eraseAt = useCallback(
-    (point: { x: number; y: number }) => {
-      const index = findShapeAt(point.x, point.y);
-      if (index === null) return;
-
-      shapesRef.current.splice(index, 1);
-
-      // Keep selection pointing at the right shape after the splice.
-      if (selectedShape.current === index) {
-        selectedShape.current = null;
-      } else if (
-        selectedShape.current !== null &&
-        selectedShape.current > index
-      ) {
-        selectedShape.current -= 1;
-      }
-
-      commitHistory();
-      scheduleRender();
-    },
-    [findShapeAt, commitHistory, scheduleRender]
-  );
-
-  // ------------------------------------------------------------------
-  // Public gesture entry points (shared by mouse AND touch).
-  // ------------------------------------------------------------------
-  const beginGesture = useCallback(
-    (clientX: number, clientY: number, forcePan: boolean) => {
-      if (forcePan || spaceDown.current) {
-        const s = screenPoint(clientX, clientY);
-        beginPan(s.x, s.y);
-        return;
-      }
-
-      const w = worldPoint(clientX, clientY);
-
-      if (toolRef.current === "eraser") {
-        eraseAt(w);
-        return;
-      }
-
-      if (toolRef.current === "select") {
-        const sel = selectedShape.current;
-        if (sel !== null) {
-          const shape = shapesRef.current[sel];
-          if (shape) {
-            const s = screenPoint(clientX, clientY);
-            const handle = hitTestResizeHandle(
-              shape,
-              cameraRef.current,
-              s.x,
-              s.y
-            );
-            if (handle) {
-              beginResize(handle);
-              scheduleRender();
-              return;
-            }
-          }
-        }
-
-        const index = findShapeAt(w.x, w.y);
-        if (index !== null) {
-          beginDrag(index, w);
-        } else {
-          // FIX: dragging empty canvas pans the camera (Excalidraw behavior).
-          // Deselect first, then start a pan gesture. A plain click just
-          // deselects (the pan moves by a zero delta, so nothing is visible);
-          // an actual drag pans the camera smoothly.
-          selectedShape.current = null;
-          const s = screenPoint(clientX, clientY);
-          beginPan(s.x, s.y);
-          scheduleRender();
-        }
-        return;
-      }
-
-      beginDraw(w);
-    },
-    [
-      screenPoint,
-      worldPoint,
-      beginPan,
-      beginDrag,
-      beginDraw,
-      beginResize,
-      eraseAt,
-      findShapeAt,
-      scheduleRender,
-    ]
-  );
-
-  const updateGesture = useCallback(
-    (clientX: number, clientY: number) => {
-      const s = screenPoint(clientX, clientY);
-      const w = worldPoint(clientX, clientY);
-
-      switch (gestureRef.current) {
-        case "pan":
-          updatePan(s.x, s.y);
-          break;
-        case "drag":
-          updateDrag(w);
-          break;
-        case "resize":
-          updateResize(w);
-          break;
-        case "draw":
-          updateDraw(w);
-          break;
-        default:
-          break;
-      }
-    },
-    [screenPoint, worldPoint, updatePan, updateDrag, updateResize, updateDraw]
-  );
-
-  const endGesture = useCallback(() => {
-    switch (gestureRef.current) {
-      case "draw":
-        endDraw();
-        break;
-      case "drag":
-        endDrag();
-        break;
-      case "resize":
-        endResize();
-        break;
-      case "pan":
-        endPan();
-        break;
-      default:
-        break;
-    }
-    // FIX: after a pan ends, the cursor would stay "grabbing" until the next
-    // mousemove. Reset it immediately to the tool's normal cursor.
-    refreshCursor();
-  }, [endDraw, endDrag, endResize, endPan, refreshCursor]);
-
-  // ------------------------------------------------------------------
-  // Touch: two-finger drag pans the camera (no zoom).
-  // ------------------------------------------------------------------
-  const startTouchPan = useCallback(
-    (touches: React.TouchList) => {
-      const a = screenPoint(touches[0].clientX, touches[0].clientY);
-      const b = screenPoint(touches[1].clientX, touches[1].clientY);
-      touchPanActive.current = true;
-      beginPan((a.x + b.x) / 2, (a.y + b.y) / 2);
-    },
-    [screenPoint, beginPan]
-  );
-
-  const updateTouchPan = useCallback(
-    (touches: React.TouchList) => {
-      const a = screenPoint(touches[0].clientX, touches[0].clientY);
-      const b = screenPoint(touches[1].clientX, touches[1].clientY);
-      updatePan((a.x + b.x) / 2, (a.y + b.y) / 2);
-    },
-    [screenPoint, updatePan]
-  );
-
-  // ------------------------------------------------------------------
-  // Mount: set up context, viewport sizing, and native listeners.
-  // ------------------------------------------------------------------
-  useEffect(() => {
->>>>>>> b21c283 (fix:solved infinity canvas window)
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-<<<<<<< HEAD
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // background
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 2;
-
-    shapes.forEach((shape) => {
-      ctx.beginPath();
-
-      if (shape.type === "pencil") {
-        shape.points.forEach((p, i) => {
-          if (i === 0) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
-        });
-        ctx.stroke();
-      }
-
-      if (shape.type === "rectangle" || shape.type === "square") {
-        ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
-      }
-
-      if (shape.type === "circle") {
-        ctx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    });
-  }
-
-  // 🎯 FIND SHAPE FOR SELECT / ERASE
-  function findShapeAt(x: number, y: number): number | null {
+  const findShapeAt = (x: number, y: number) => {
     for (let i = shapesRef.current.length - 1; i >= 0; i--) {
-      const shape = shapesRef.current[i];
-
-      if (shape.type === "rectangle" || shape.type === "square") {
-        if (
-          x >= shape.x &&
-          x <= shape.x + shape.width &&
-          y >= shape.y &&
-          y <= shape.y + shape.height
-        ) return i;
-      }
-
-      if (shape.type === "circle") {
-        const dx = x - shape.x;
-        const dy = y - shape.y;
-        if (dx * dx + dy * dy <= shape.radius * shape.radius) return i;
-      }
-
-      if (shape.type === "pencil") {
-        for (const p of shape.points) {
-          if (Math.abs(p.x - x) < 5 && Math.abs(p.y - y) < 5) return i;
-        }
-      }
+      if (shapeContainsPoint(shapesRef.current[i], x, y)) return i;
     }
-
     return null;
-  }
+  };
 
-  // 🖱️ MOUSE DOWN
-  function handleMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
-    const x = e.clientX;
-    const y = e.clientY;
+  // 🎯 EVENTS
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const w = worldPoint(e.clientX, e.clientY);
 
-    // ERASER
     if (tool === "eraser") {
-      const index = findShapeAt(x, y);
+      const index = findShapeAt(w.x, w.y);
       if (index !== null) {
         shapesRef.current.splice(index, 1);
-        drawShapes(shapesRef.current);
+        commitHistory();
+        scheduleRender();
       }
       return;
     }
 
-    // SELECT
     if (tool === "select") {
-      const index = findShapeAt(x, y);
-
+      const index = findShapeAt(w.x, w.y);
       if (index !== null) {
         selectedShape.current = index;
-        isDragging.current = true;
-
         const shape = shapesRef.current[index];
 
-        if (shape.type !== "pencil") {
-          dragOffset.current = {
-            x: x - shape.x,
-            y: y - shape.y,
-          };
-        }
+        const anchor =
+          shape.type === "pencil"
+            ? shape.points[0]
+            : { x: shape.x, y: shape.y };
+
+        dragOffset.current = {
+          x: w.x - anchor.x,
+          y: w.y - anchor.y,
+        };
+
+        gestureRef.current = "drag";
       } else {
         selectedShape.current = null;
+        gestureRef.current = "pan";
       }
 
+      scheduleRender();
       return;
     }
 
-    // DRAWING START
-    isDrawing.current = true;
-
+    // DRAW
     if (tool === "pencil") {
-      currentShape.current = {
-        type: "pencil",
-        points: [{ x, y }],
-      };
+      currentShape.current = { type: "pencil", points: [w] };
     }
 
     if (tool === "rectangle") {
       currentShape.current = {
         type: "rectangle",
-        x,
-        y,
-        width: 0,
-        height: 0,
-      };
-    }
-
-    if (tool === "square") {
-      currentShape.current = {
-        type: "square",
-        x,
-        y,
+        x: w.x,
+        y: w.y,
         width: 0,
         height: 0,
       };
@@ -957,331 +227,92 @@ function DrawCanvas({
     if (tool === "circle") {
       currentShape.current = {
         type: "circle",
-        x,
-        y,
+        x: w.x,
+        y: w.y,
         radius: 0,
       };
     }
-  }
 
-  // 🖱️ MOUSE MOVE
-  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
-    const x = e.clientX;
-    const y = e.clientY;
+    gestureRef.current = "draw";
+  };
 
-    // DRAGGING
-    if (
-      tool === "select" &&
-      isDragging.current &&
-      selectedShape.current !== null
-    ) {
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    mousePos.current = screenPoint(e.clientX, e.clientY);
+
+    const w = worldPoint(e.clientX, e.clientY);
+
+    if (gestureRef.current === "drag" && selectedShape.current !== null) {
       const shape = shapesRef.current[selectedShape.current];
+      const anchor =
+        shape.type === "pencil"
+          ? shape.points[0]
+          : { x: shape.x, y: shape.y };
 
-      if (shape.type === "pencil") {
-        const dx = x - shape.points[0].x;
-        const dy = y - shape.points[0].y;
+      const dx = w.x - dragOffset.current.x - anchor.x;
+      const dy = w.y - dragOffset.current.y - anchor.y;
 
-        shape.points = shape.points.map((p) => ({
-          x: p.x + dx,
-          y: p.y + dy,
-        }));
-      } else {
-        shape.x = x - dragOffset.current.x;
-        shape.y = y - dragOffset.current.y;
-=======
-    ctxRef.current = ctx;
-
-    // ------------------------------------------------------------------
-    // FIX: resize must never lose drawings.
-    //
-    // Shapes live in shapesRef (a JS array of WORLD coordinates), never in
-    // the canvas pixel buffer. Resizing the canvas buffer (canvas.width /
-    // canvas.height) CLEARS its pixels, so we re-render immediately after
-    // every size change and drawShapes() repaints every shape from the ref.
-    // This is why nothing disappears when the window is resized.
-    // ------------------------------------------------------------------
-    const resizeCanvas = () => {
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
-      render();
-    };
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
-
-    // ------------------------------------------------------------------
-    // FIX: wheel / trackpad panning (the missing "expansion" navigation).
-    //
-    // The canvas is an infinite world plane viewed through a camera. The
-    // html/body are overflow:hidden, so the page itself never scrolls and a
-    // mouse wheel / trackpad gesture would otherwise do NOTHING - that is why
-    // the canvas seemed to "not expand". Instead of scrolling the page, the
-    // wheel pans the camera, which moves the viewport in BOTH axes:
-    //   - mouse wheel sends vertical deltaY   -> pan up/down
-    //   - trackpad two-finger sends deltaX+deltaY -> pan in both directions
-    //
-    //   - ctrl+wheel is a trackpad pinch (zoom intent); there is no zoom, so
-    //     it is ignored rather than panning wildly.
-    //   - wheel is ignored mid-stroke so a scroll cannot jump the line that
-    //     is currently being drawn.
-    // ------------------------------------------------------------------
-    const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || gestureRef.current === "draw") return;
-      e.preventDefault();
-      // Firefox reports lines instead of pixels (deltaMode 1); normalize so
-      // the pan distance is comparable across browsers.
-      const mult = e.deltaMode === 1 ? 16 : 1;
-      const camera = cameraRef.current;
-      camera.x += e.deltaX * mult;
-      camera.y += e.deltaY * mult;
+      translateShape(shape, dx, dy);
       scheduleRender();
-    };
-    canvas.addEventListener("wheel", onWheel, { passive: false });
-
-    // Window-level move/up so dragging keeps working when the pointer leaves
-    // the canvas mid-gesture.
-    const onWindowMouseMove = (e: MouseEvent) => {
-      if (gestureRef.current) updateGesture(e.clientX, e.clientY);
-    };
-    const onWindowMouseUp = () => endGesture();
-    window.addEventListener("mousemove", onWindowMouseMove);
-    window.addEventListener("mouseup", onWindowMouseUp);
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const typing =
-        !!target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable);
-
-      if (e.code === "Space") {
-        if (!typing && !spaceDown.current) {
-          spaceDown.current = true;
-          e.preventDefault();
-          canvas.style.cursor = "grab";
-        }
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        if (e.shiftKey) handleRedo();
-        else handleUndo();
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
-        e.preventDefault();
-        handleRedo();
-      }
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space" && spaceDown.current) {
-        spaceDown.current = false;
-        e.preventDefault();
-        refreshCursor();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-
-    refreshCursor();
-
-    return () => {
-      window.removeEventListener("resize", resizeCanvas);
-      window.removeEventListener("mousemove", onWindowMouseMove);
-      window.removeEventListener("mouseup", onWindowMouseUp);
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      canvas.removeEventListener("wheel", onWheel);
-      if (rafId.current !== null) {
-        cancelAnimationFrame(rafId.current);
-      }
-    };
-  }, [render, updateGesture, endGesture, handleUndo, handleRedo, refreshCursor, scheduleRender]);
-
-  // ------------------------------------------------------------------
-  // Imperative API
-  // ------------------------------------------------------------------
-  useImperativeHandle(ref, () => ({
-    undo: handleUndo,
-    redo: handleRedo,
-  }), [handleUndo, handleRedo]);
-
-  // ------------------------------------------------------------------
-  // React event handlers (canvas-level)
-  // ------------------------------------------------------------------
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      // Right-click does nothing. Middle-click forces pan.
-      if (e.button === 2) return;
-      if (e.button === 1) e.preventDefault();
-
-      // Make sure Space is not "clicking" the last focused toolbar button.
-      (document.activeElement as HTMLElement | null)?.blur();
-
-      beginGesture(e.clientX, e.clientY, e.button === 1);
-    },
-    [beginGesture]
-  );
-
-  // Tracks the pointer so the canvas-drawn eraser cursor can follow it, then
-  // repaints. The eraser circle only repaints while the mouse is actually
-  // moving over the canvas - it is idle otherwise.
-  const handleCanvasMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      mousePos.current = screenPoint(e.clientX, e.clientY);
-      updateCursor(e.clientX, e.clientY);
-      if (toolRef.current === "eraser") scheduleRender();
-    },
-    [screenPoint, updateCursor, scheduleRender]
-  );
-
-  const handleCanvasMouseEnter = useCallback(() => {
-    mouseOverCanvas.current = true;
-    scheduleRender();
-  }, [scheduleRender]);
-
-  const handleCanvasMouseLeave = useCallback(() => {
-    mouseOverCanvas.current = false;
-    scheduleRender();
-  }, [scheduleRender]);
-
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-      if (e.touches.length >= 2) {
-        endGesture();
-        startTouchPan(e.touches);
-        return;
-      }
-      if (e.touches.length === 1) {
-        beginGesture(e.touches[0].clientX, e.touches[0].clientY, false);
-      }
-    },
-    [beginGesture, endGesture, startTouchPan]
-  );
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-      if (touchPanActive.current) {
-        if (e.touches.length >= 2) {
-          updateTouchPan(e.touches);
-        } else {
-          // Lifting one finger ends the pan instead of jumping the camera.
-          endGesture();
-          touchPanActive.current = false;
-        }
-        return;
-      }
-      if (e.touches.length === 1) {
-        updateGesture(e.touches[0].clientX, e.touches[0].clientY);
->>>>>>> b21c283 (fix:solved infinity canvas window)
-      }
-    },
-    [touchPanActive, updateTouchPan, endGesture, updateGesture]
-  );
-
-<<<<<<< HEAD
-      drawShapes(shapesRef.current);
       return;
     }
 
-    // DRAWING
-    if (!isDrawing.current || !currentShape.current) return;
-
-    if (currentShape.current.type === "pencil") {
-      currentShape.current.points.push({ x, y });
+    if (gestureRef.current === "pan") {
+      cameraRef.current.x -= e.movementX;
+      cameraRef.current.y -= e.movementY;
+      scheduleRender();
+      return;
     }
 
-    if (
-      currentShape.current.type === "rectangle" ||
-      currentShape.current.type === "square"
-    ) {
-      const dx = x - currentShape.current.x;
-      const dy = y - currentShape.current.y;
+    if (!currentShape.current) return;
 
-      if (currentShape.current.type === "square") {
-        const size = Math.max(Math.abs(dx), Math.abs(dy));
-        currentShape.current.width = size * Math.sign(dx);
-        currentShape.current.height = size * Math.sign(dy);
-      } else {
-        currentShape.current.width = dx;
-        currentShape.current.height = dy;
+    const shape = currentShape.current;
+
+    if (shape.type === "pencil") {
+      shape.points.push(w);
+    }
+
+    if (shape.type === "rectangle") {
+      shape.width = w.x - shape.x;
+      shape.height = w.y - shape.y;
+    }
+
+    if (shape.type === "circle") {
+      shape.radius = Math.hypot(w.x - shape.x, w.y - shape.y);
+    }
+
+    scheduleRender();
+  };
+
+  const handleMouseUp = () => {
+    if (gestureRef.current === "draw" && currentShape.current) {
+      if (currentShape.current.type === "rectangle") {
+        normalizeRect(currentShape.current);
       }
-    }
 
-    if (currentShape.current.type === "circle") {
-      const dx = x - currentShape.current.x;
-      const dy = y - currentShape.current.y;
-      currentShape.current.radius = Math.sqrt(dx * dx + dy * dy);
-    }
-
-    drawShapes([...shapesRef.current, currentShape.current]);
-  }
-
-  // 🖱️ MOUSE UP
-  function handleMouseUp() {
-    isDrawing.current = false;
-    isDragging.current = false;
-
-    if (currentShape.current) {
       shapesRef.current.push(currentShape.current);
       currentShape.current = null;
+      commitHistory();
     }
 
-    drawShapes(shapesRef.current);
-  }
-=======
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-      if (touchPanActive.current && e.touches.length < 2) {
-        touchPanActive.current = false;
-      }
-      endGesture();
-    },
-    [touchPanActive, endGesture]
-  );
->>>>>>> b21c283 (fix:solved infinity canvas window)
+    gestureRef.current = null;
+    scheduleRender();
+  };
 
   return (
     <canvas
       ref={canvasRef}
       onMouseDown={handleMouseDown}
-      onMouseMove={handleCanvasMouseMove}
-      onMouseEnter={handleCanvasMouseEnter}
-      onMouseLeave={handleCanvasMouseLeave}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
-      onContextMenu={(e) => e.preventDefault()}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseEnter={() => (mouseOverCanvas.current = true)}
+      onMouseLeave={() => (mouseOverCanvas.current = false)}
       style={{
-<<<<<<< HEAD
-        display: "block",
-        cursor:
-          tool === "pencil"
-            ? "crosshair"
-            : tool === "eraser"
-            ? "pointer"
-            : tool === "select"
-            ? "default"
-            : "crosshair",
-      }}
-    />
-  );
-}
-=======
         position: "fixed",
         inset: 0,
         display: "block",
-        touchAction: "none",
       }}
     />
   );
 }
 
 export default memo(DrawCanvas);
->>>>>>> b21c283 (fix:solved infinity canvas window)
