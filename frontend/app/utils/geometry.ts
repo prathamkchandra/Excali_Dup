@@ -1,21 +1,28 @@
+import type { Camera } from "@/app/utils/camera";
+import { worldToScreen } from "@/app/utils/coordinates";
 import type { Shape } from "@/app/types/Shape";
 
-// Hit detection in canvas-local coordinates.
+// Hit detection and geometry helpers, all in WORLD coordinates.
 //
-// `x` and `y` must already be canvas-local (convert the mouse with the
-// getBoundingClientRect()-based helper). Because shapes are stored in the
-// same coordinate space, this works correctly no matter how far the page
-// has been scrolled.
-export function shapeContainsPoint(
-  shape: Shape,
-  x: number,
-  y: number
-): boolean {
+// Shapes are stored in world coordinates. `shapeContainsPoint` and the
+// bounds helper therefore receive world-space points (convert the mouse
+// first with screenToWorld).
+
+export type ResizeHandleId = "tl" | "tr" | "bl" | "br";
+
+export type Bounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+
+// Axis-aligned world bounding box of a shape. Works even while a shape is
+// being drawn with a negative width/height (dragging up or left), because it
+// takes the min/max of both corners.
+export function getShapeBounds(shape: Shape): Bounds {
   switch (shape.type) {
     case "pencil": {
-      // A pencil stroke is hit-tested by its bounding box, matching the
-      // previous behavior. Bounds are computed in a loop so it stays safe
-      // even for strokes with thousands of points.
       let minX = Infinity;
       let minY = Infinity;
       let maxX = -Infinity;
@@ -26,31 +33,105 @@ export function shapeContainsPoint(
         if (p.x > maxX) maxX = p.x;
         if (p.y > maxY) maxY = p.y;
       }
-      return (
-        x >= minX && x <= maxX && y >= minY && y <= maxY
-      );
+      return { minX, minY, maxX, maxY };
     }
 
     case "rectangle":
-      return (
-        x >= shape.x &&
-        x <= shape.x + shape.width &&
-        y >= shape.y &&
-        y <= shape.y + shape.height
-      );
+      return {
+        minX: Math.min(shape.x, shape.x + shape.width),
+        minY: Math.min(shape.y, shape.y + shape.height),
+        maxX: Math.max(shape.x, shape.x + shape.width),
+        maxY: Math.max(shape.y, shape.y + shape.height),
+      };
 
     case "square":
-      return (
-        x >= shape.x &&
-        x <= shape.x + shape.size &&
-        y >= shape.y &&
-        y <= shape.y + shape.size
-      );
+      return {
+        minX: Math.min(shape.x, shape.x + shape.size),
+        minY: Math.min(shape.y, shape.y + shape.size),
+        maxX: Math.max(shape.x, shape.x + shape.size),
+        maxY: Math.max(shape.y, shape.y + shape.size),
+      };
+
+    case "circle":
+      return {
+        minX: shape.x - shape.radius,
+        minY: shape.y - shape.radius,
+        maxX: shape.x + shape.radius,
+        maxY: shape.y + shape.radius,
+      };
+  }
+}
+
+export function shapeContainsPoint(
+  shape: Shape,
+  x: number,
+  y: number
+): boolean {
+  switch (shape.type) {
+    case "pencil": {
+      const b = getShapeBounds(shape);
+      return x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY;
+    }
+
+    case "rectangle":
+    case "square": {
+      const b = getShapeBounds(shape);
+      return x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY;
+    }
 
     case "circle": {
       const dx = x - shape.x;
       const dy = y - shape.y;
       return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
     }
+  }
+}
+
+// World-space positions of the resize handles for a shape. Rectangle and
+// square get the 4 corners of their bounding box; a circle gets the 4 points
+// of its bounding box too (each one pulls the radius). Pencil strokes are
+// not resizable, so they get no handles.
+export function getResizeHandles(
+  shape: Shape
+): { id: ResizeHandleId; x: number; y: number }[] {
+  if (shape.type === "pencil") return [];
+
+  const b = getShapeBounds(shape);
+  return [
+    { id: "tl", x: b.minX, y: b.minY },
+    { id: "tr", x: b.maxX, y: b.minY },
+    { id: "bl", x: b.minX, y: b.maxY },
+    { id: "br", x: b.maxX, y: b.maxY },
+  ];
+}
+
+// Returns the handle under a SCREEN-space point (handles are hit-tested in
+// screen space so their grab area stays a constant ~8px).
+export function hitTestResizeHandle(
+  shape: Shape,
+  camera: Camera,
+  screenX: number,
+  screenY: number,
+  hitRadius = 8
+): ResizeHandleId | null {
+  for (const handle of getResizeHandles(shape)) {
+    const pos = worldToScreen(camera, handle.x, handle.y);
+    const dx = screenX - pos.x;
+    const dy = screenY - pos.y;
+    if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+      return handle.id;
+    }
+  }
+  return null;
+}
+
+export function resizeCursor(handle: ResizeHandleId): string {
+  switch (handle) {
+    case "tl":
+    case "br":
+      return "nwse-resize";
+    case "tr":
+    case "bl":
+      return "nesw-resize";
   }
 }

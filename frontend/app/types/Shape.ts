@@ -1,9 +1,10 @@
 // IMPORTANT:
-// All coordinates stored in these shapes are CANVAS-LOCAL coordinates,
-// expressed in CSS pixels. The canvas starts at the top of the document and
-// only grows downward, so these coordinates also equal page coordinates.
-// Because shapes keep their original coordinates, they never move when the
-// canvas is expanded - the canvas itself just gets taller.
+// All coordinates stored in these shapes are WORLD coordinates (CSS pixels in
+// an infinite plane the camera floats over) - NOT canvas-local coordinates.
+// The canvas is a fixed-size viewport; the camera in utils/camera.ts maps
+// world points to screen points for rendering (screenX = worldX - camera.x).
+// Because shapes keep their world coordinates forever, panning the camera or
+// resizing the window never moves or loses them.
 
 export type Point = {
   x: number;
