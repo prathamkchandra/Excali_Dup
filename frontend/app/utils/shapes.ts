@@ -21,6 +21,16 @@ export function translateShape(shape: Shape, dx: number, dy: number) {
       shape.x += dx;
       shape.y += dy;
       break;
+
+    case "line":
+    case "arrow":
+      // Both endpoints move by the same delta so the segment keeps its
+      // length and direction.
+      shape.startX += dx;
+      shape.startY += dy;
+      shape.endX += dx;
+      shape.endY += dy;
+      break;
   }
 }
 
@@ -95,6 +105,21 @@ export function resizeShape(
 
     case "circle":
       shape.radius = Math.hypot(mouse.x - shape.x, mouse.y - shape.y);
+      break;
+
+    case "line":
+    case "arrow":
+      // Endpoint resize: the dragged handle's endpoint follows the mouse
+      // exactly; the other endpoint stays anchored. Length and direction
+      // update naturally. Corner ids never occur here (getResizeHandles
+      // only returns start/end for these shapes).
+      if (handle === "start") {
+        shape.startX = mouse.x;
+        shape.startY = mouse.y;
+      } else if (handle === "end") {
+        shape.endX = mouse.x;
+        shape.endY = mouse.y;
+      }
       break;
 
     case "pencil":

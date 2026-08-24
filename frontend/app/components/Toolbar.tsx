@@ -7,6 +7,8 @@ import {
   RectangleHorizontal,
   Square,
   Circle,
+  Minus,
+  ArrowRight,
   MousePointer2,
   Eraser,
 } from "lucide-react";
@@ -29,6 +31,8 @@ const TOOLS: ToolEntry[] = [
   { id: "rectangle", icon: RectangleHorizontal, label: "Rectangle" },
   { id: "square", icon: Square, label: "Square" },
   { id: "circle", icon: Circle, label: "Circle" },
+  { id: "line", icon: Minus, label: "Line" },
+  { id: "arrow", icon: ArrowRight, label: "Arrow" },
   { id: "eraser", icon: Eraser, label: "Eraser" },
 ];
 

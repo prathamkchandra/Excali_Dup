@@ -38,8 +38,31 @@ export type CircleShape = {
   radius: number;
 };
 
+// A straight segment between two world-space endpoints. Unlike the area
+// shapes there is no canonical "origin corner": both endpoints matter, so
+// dragging must move all four numbers and resizing moves one endpoint at a
+// time.
+export type LineShape = {
+  type: "line";
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+};
+
+// Same geometry as a line, but rendered with an arrowhead at (endX, endY).
+export type ArrowShape = {
+  type: "arrow";
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+};
+
 export type Shape =
   | PencilShape
   | RectangleShape
   | SquareShape
-  | CircleShape;
+  | CircleShape
+  | LineShape
+  | ArrowShape;
