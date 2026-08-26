@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Toolbar from "./components/Toolbar";
 import DrawCanvas from "./components/DrawCanvas";
 import BottomBar from "./components/BottomBar";
@@ -12,11 +12,16 @@ export default function Home() {
     useState<Tool>("pencil");
   const [zoom, setZoom] =
     useState(1);
+  const [loadingDrawing, setLoadingDrawing] =
+    useState(true);
 
-  // Imperative handle to the canvas, so the BottomBar buttons can trigger
-  // undo/redo/zoom that live next to the shapes inside DrawCanvas.
   const canvasApi =
     useRef<DrawCanvasHandle>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoadingDrawing(false), 300);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <>
@@ -30,6 +35,7 @@ export default function Home() {
         tool={tool}
         zoom={zoom}
         onZoomChange={setZoom}
+        loadingDrawing={loadingDrawing}
       />
 
       <BottomBar

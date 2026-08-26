@@ -9,11 +9,6 @@ type ZoomControlsProps = {
   fitToScreen: () => void;
 };
 
-const iconButtonClass = [
-  "flex h-8 w-8 items-center justify-center rounded-lg text-white/80",
-  "transition-colors hover:bg-white/10 hover:text-white sm:h-9 sm:w-9",
-].join(" ");
-
 export default function ZoomControls({
   zoom,
   setZoom,
@@ -31,7 +26,7 @@ export default function ZoomControls({
       />
 
       <button
-        className={iconButtonClass}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-10 sm:w-10 md:h-9 md:w-9"
         onClick={() => zoomBy(1 / 1.25)}
         title="Zoom out (Ctrl+-)"
         aria-label="Zoom out"
@@ -40,7 +35,7 @@ export default function ZoomControls({
       </button>
 
       <button
-        className="h-8 min-w-12 rounded-lg px-1.5 text-xs font-medium tabular-nums text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-9 sm:min-w-14 sm:text-sm"
+        className="h-9 min-w-12 rounded-lg px-1.5 text-xs font-medium tabular-nums text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-10 sm:min-w-14 sm:text-sm md:h-9"
         onClick={() => setZoom(1)}
         title="Reset to 100% (Ctrl+0)"
         aria-label="Reset zoom"
@@ -49,7 +44,7 @@ export default function ZoomControls({
       </button>
 
       <button
-        className={iconButtonClass}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-10 sm:w-10 md:h-9 md:w-9"
         onClick={() => zoomBy(1.25)}
         title="Zoom in (Ctrl++)"
         aria-label="Zoom in"
@@ -58,7 +53,7 @@ export default function ZoomControls({
       </button>
 
       <button
-        className={iconButtonClass}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-10 sm:w-10 md:h-9 md:w-9"
         onClick={fitToScreen}
         title="Fit to screen"
         aria-label="Fit to screen"

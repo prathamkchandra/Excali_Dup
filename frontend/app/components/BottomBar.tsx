@@ -12,11 +12,6 @@ type BottomBarProps = {
   fitToScreen: () => void;
 };
 
-const iconButtonClass = [
-  "flex h-8 w-8 items-center justify-center rounded-lg text-white/80",
-  "transition-colors hover:bg-white/10 hover:text-white sm:h-9 sm:w-9",
-].join(" ");
-
 export default function BottomBar({
   zoom,
   onUndo,
@@ -27,12 +22,15 @@ export default function BottomBar({
 }: BottomBarProps) {
   return (
     <div
-      className="fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border border-white/10 bg-[#1e1e1e]/95 p-1 shadow-lg backdrop-blur sm:bottom-5 sm:gap-1 sm:p-1.5"
+      className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border border-white/10 bg-[#1e1e1e]/95 p-1 shadow-lg backdrop-blur sm:gap-1 sm:rounded-xl sm:p-1.5 md:bottom-5 md:gap-1"
+      style={{
+        bottom: "calc(12px + var(--safe-bottom, 0px))",
+      }}
       role="toolbar"
       aria-label="Canvas controls"
     >
       <button
-        className={iconButtonClass}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-10 sm:w-10 md:h-9 md:w-9"
         onClick={onUndo}
         title="Undo (Ctrl+Z)"
         aria-label="Undo"
@@ -41,7 +39,7 @@ export default function BottomBar({
       </button>
 
       <button
-        className={iconButtonClass}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-10 sm:w-10 md:h-9 md:w-9"
         onClick={onRedo}
         title="Redo (Ctrl+Shift+Z)"
         aria-label="Redo"
