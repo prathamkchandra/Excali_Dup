@@ -193,14 +193,16 @@ export function getResizeHandles(
 }
 
 // Returns the handle under a SCREEN-space point (handles are hit-tested in
-// screen space so their grab area stays a constant ~8px regardless of zoom).
+// screen space so their grab area stays a constant ~12px regardless of zoom).
+// The visual handle is 8px but the touch/click hit area is larger for easier
+// grabbing on both mouse and touch devices.
 export function hitTestResizeHandle(
   shape: Shape,
   camera: Camera,
   zoom: number,
   screenX: number,
   screenY: number,
-  hitRadius = 8
+  hitRadius = 12
 ): ResizeHandleId | null {
   for (const handle of getResizeHandles(shape)) {
     const pos = worldToScreen(camera, zoom, handle.x, handle.y);

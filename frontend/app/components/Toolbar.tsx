@@ -42,7 +42,12 @@ export default function Toolbar({
 }: ToolbarProps) {
   return (
     <div
-      className="fixed top-3 left-1/2 z-50 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#1e1e1e]/95 py-3 px-5 shadow-xl backdrop-blur sm:top-6 sm:gap-3 sm:py-3 sm:px-6"
+      className="fixed left-1/2 z-50 flex max-w-[calc(100vw-16px)] -translate-x-1/2 items-center gap-1.5 overflow-x-auto overscroll-contain rounded-2xl border border-white/10 bg-[#1e1e1e]/95 p-2 shadow-xl backdrop-blur sm:top-6 sm:gap-2.5 sm:rounded-2xl sm:border sm:p-2.5 md:top-6"
+      style={{
+        top: "calc(12px + var(--safe-top, 0px))",
+        WebkitOverflowScrolling: "touch",
+        scrollbarWidth: "none",
+      }}
       role="toolbar"
       aria-label="Drawing tools"
     >
@@ -56,16 +61,17 @@ export default function Toolbar({
             aria-label={label}
             aria-pressed={active}
             className={[
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors sm:h-11 sm:w-11 md:h-12 md:w-12",
               active
                 ? "bg-amber-400 text-black shadow-md"
                 : "text-white/80 hover:bg-white/10 hover:text-white",
             ].join(" ")}
           >
             <Icon
-              size={22}
+              size={20}
               strokeWidth={2}
               aria-hidden="true"
+              className="sm:w-[22px] sm:h-[22px]"
             />
           </button>
         );

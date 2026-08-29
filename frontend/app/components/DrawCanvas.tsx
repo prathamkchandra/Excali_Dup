@@ -34,18 +34,30 @@ import {
   normalizeRect,
 } from "@/app/utils/shapes";
 
+import {
+  loadOrCreateActiveDrawing,
+  saveDrawing,
+  createDrawing,
+  setActiveDrawing,
+  getDrawing,
+} from "@/app/utils/storage/drawingStorage";
+import type { Drawing } from "@/app/types/Drawing";
+
 export type DrawCanvasHandle = {
   undo: () => void;
   redo: () => void;
   setZoom: (zoom: number) => void;
   zoomBy: (factor: number) => void;
   fitToScreen: () => void;
+  loadDrawing: (id: string) => Promise<void>;
+  createNewDrawing: (name?: string) => Promise<Drawing>;
 };
 
 type Props = {
   tool: Tool;
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  loadingDrawing: boolean;
   ref?: Ref<DrawCanvasHandle>;
 };
 
@@ -81,7 +93,7 @@ function baseCursorForTool(t: Tool): string {
   }
 }
 
-function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
+function DrawCanvas({ tool, zoom, onZoomChange, loadingDrawing, ref }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
@@ -123,6 +135,11 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
   useEffect(() => {
     toolRef.current = tool;
   }, [tool]);
+
+  // Persistence refs.
+  const drawingIdRef = useRef<string | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drawnRef = useRef(false);
 
   // ------------------------------------------------------------------
   // Render loop. Everything is drawn here (background, grid, shapes,
@@ -183,6 +200,73 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
   }, [render]);
 
   // ------------------------------------------------------------------
+  // Persistence: debounced save to IndexedDB and initial drawing load.
+  // ------------------------------------------------------------------
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      const id = drawingIdRef.current;
+      if (!id) return;
+
+      try {
+        saveDrawing({
+          id,
+          name: "Untitled",
+          shapes: shapesRef.current,
+          camera: { x: cameraRef.current.x, y: cameraRef.current.y },
+          zoom: zoomRef.current,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      } catch (error) {
+        console.error("Failed to autosave drawing", error);
+      }
+    }, 400);
+  }, []);
+
+  const loadShapeData = useCallback(
+    (drawing: Drawing) => {
+      drawingIdRef.current = drawing.id;
+      shapesRef.current = drawing.shapes;
+      cameraRef.current = drawing.camera;
+      if (drawing.zoom != null) {
+        zoomRef.current = drawing.zoom;
+        onZoomChange(drawing.zoom);
+      }
+      history.current = [];
+      redoStack.current = [];
+      selectedShape.current = null;
+      currentShape.current = null;
+      scheduleRender();
+    },
+    [onZoomChange, scheduleRender]
+  );
+
+  // Initial load: read active drawing from IndexedDB (or create one).
+  useEffect(() => {
+    if (drawnRef.current) return;
+    drawnRef.current = true;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const drawing = await loadOrCreateActiveDrawing();
+        if (!cancelled) loadShapeData(drawing);
+      } catch (error) {
+        console.error("Failed to load drawing", error);
+        if (!cancelled) scheduleRender();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current);
+    };
+  }, [loadShapeData, scheduleRender]);
+
+  // ------------------------------------------------------------------
   // History.
   //
   // Every mutating gesture (draw / drag / resize) snapshots the state BEFORE
@@ -210,7 +294,8 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
     shapesRef.current = history.current.pop() || [];
     selectedShape.current = null;
     render();
-  }, [cloneShapes, render]);
+    scheduleSave();
+  }, [cloneShapes, render, scheduleSave]);
 
   const handleRedo = useCallback(() => {
     if (redoStack.current.length === 0) return;
@@ -218,7 +303,8 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
     shapesRef.current = redoStack.current.pop() || [];
     selectedShape.current = null;
     render();
-  }, [cloneShapes, render]);
+    scheduleSave();
+  }, [cloneShapes, render, scheduleSave]);
 
   // ------------------------------------------------------------------
   // Coordinate helpers (screen <-> world).
@@ -403,7 +489,8 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
     }
 
     scheduleRender();
-  }, [discardSnapshot, scheduleRender]);
+    scheduleSave();
+  }, [discardSnapshot, scheduleRender, scheduleSave]);
 
   // ------------------------------------------------------------------
   // Drag gesture (select tool).
@@ -454,7 +541,8 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
     dragMoved.current = false;
     gestureRef.current = null;
     scheduleRender();
-  }, [discardSnapshot, scheduleRender]);
+    scheduleSave();
+  }, [discardSnapshot, scheduleRender, scheduleSave]);
 
   // ------------------------------------------------------------------
   // Resize gesture (select tool, on a corner handle).
@@ -509,7 +597,8 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
     resizeChanged.current = false;
     gestureRef.current = null;
     scheduleRender();
-  }, [discardSnapshot, scheduleRender]);
+    scheduleSave();
+  }, [discardSnapshot, scheduleRender, scheduleSave]);
 
   // ------------------------------------------------------------------
   // Pan gesture (drag empty space, middle mouse, or space+drag).
@@ -532,7 +621,8 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
 
   const endPan = useCallback(() => {
     gestureRef.current = null;
-  }, []);
+    scheduleSave();
+  }, [scheduleSave]);
 
   // ------------------------------------------------------------------
   // Zoom. Zooming keeps the world point under the cursor fixed on screen:
@@ -558,8 +648,9 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
       zoomRef.current = clamped;
       onZoomChange(clamped);
       scheduleRender();
+      scheduleSave();
     },
-    [onZoomChange, scheduleRender]
+    [onZoomChange, scheduleRender, scheduleSave]
   );
 
   const zoomBy = useCallback(
@@ -581,8 +672,9 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
       zoomRef.current = next;
       onZoomChange(next);
       scheduleRender();
+      scheduleSave();
     },
-    [onZoomChange, scheduleRender]
+    [onZoomChange, scheduleRender, scheduleSave]
   );
 
   const fitToScreen = useCallback(() => {
@@ -655,8 +747,9 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
       }
 
       scheduleRender();
+      scheduleSave();
     },
-    [findShapeAt, pushHistory, scheduleRender]
+    [findShapeAt, pushHistory, scheduleRender, scheduleSave]
   );
 
   // ------------------------------------------------------------------
@@ -664,6 +757,8 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
   // ------------------------------------------------------------------
   const beginGesture = useCallback(
     (clientX: number, clientY: number, forcePan: boolean) => {
+      if (loadingDrawing) return;
+
       if (forcePan || spaceDown.current) {
         const s = screenPoint(clientX, clientY);
         beginPan(s.x, s.y);
@@ -717,6 +812,7 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
       beginDraw(w);
     },
     [
+      loadingDrawing,
       screenPoint,
       worldPoint,
       beginPan,
@@ -909,6 +1005,28 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
     window.addEventListener("keyup", onKeyUp);
     canvas.addEventListener("wheel", onWheel, { passive: false });
 
+    // Final save on page unload.
+    const onBeforeUnload = () => {
+      if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current);
+      const id = drawingIdRef.current;
+      if (id) {
+        try {
+          saveDrawing({
+            id,
+            name: "Untitled",
+            shapes: shapesRef.current,
+            camera: { x: cameraRef.current.x, y: cameraRef.current.y },
+            zoom: zoomRef.current,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+        } catch {
+          // Synchronous save attempt on unload; nothing more we can do.
+        }
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener("mousemove", onWindowMouseMove);
@@ -916,6 +1034,7 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       canvas.removeEventListener("wheel", onWheel);
+      window.removeEventListener("beforeunload", onBeforeUnload);
       if (rafId.current !== null) cancelAnimationFrame(rafId.current);
     };
   }, [
@@ -934,6 +1053,27 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
   // ------------------------------------------------------------------
   // Imperative API for the BottomBar.
   // ------------------------------------------------------------------
+  const loadDrawing = useCallback(
+    async (id: string) => {
+      const drawing = await getDrawing(id);
+      if (drawing) {
+        loadShapeData(drawing);
+        setActiveDrawing(drawing.id);
+      }
+    },
+    [loadShapeData]
+  );
+
+  const createNewDrawing = useCallback(
+    async (name?: string) => {
+      const drawing = await createDrawing(name);
+      loadShapeData(drawing);
+      setActiveDrawing(drawing.id);
+      return drawing;
+    },
+    [loadShapeData]
+  );
+
   useImperativeHandle(
     ref,
     () => ({
@@ -942,8 +1082,10 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
       setZoom,
       zoomBy,
       fitToScreen,
+      loadDrawing,
+      createNewDrawing,
     }),
-    [handleUndo, handleRedo, setZoom, zoomBy, fitToScreen]
+    [handleUndo, handleRedo, setZoom, zoomBy, fitToScreen, loadDrawing, createNewDrawing]
   );
 
   // ------------------------------------------------------------------
@@ -1034,8 +1176,8 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
       style={{
         position: "fixed",
         inset: 0,
-        width: "100vw",
-        height: "100vh",
+        width: "100%",
+        height: "100%",
         display: "block",
         touchAction: "none",
       }}
