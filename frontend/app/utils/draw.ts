@@ -3,6 +3,7 @@ import type { Shape } from "@/app/types/Shape";
 import {
   getResizeHandles,
   getShapeBounds,
+  ARROWHEAD_SIZE,
 } from "@/app/utils/geometry";
 
 // Everything that draws pixels on the canvas.
@@ -60,6 +61,33 @@ export function drawGrid(
     ctx.lineTo(camera.x + width / zoom, y);
   }
 
+  ctx.stroke();
+}
+
+// Draws an open-V arrowhead whose tip sits at (tipX, tipY), sweeping back
+// from the shaft direction. `angle` is the shaft direction from atan2, so
+// the head rotates correctly for any line orientation (horizontal, vertical,
+// diagonal, reversed). Uses raw WORLD coordinates like drawShapes - the
+// camera transform is already applied by the render loop.
+function drawArrowhead(
+  ctx: CanvasRenderingContext2D,
+  tipX: number,
+  tipY: number,
+  angle: number
+) {
+  // How far each wing sweeps back off the reverse of the shaft (~26°).
+  const spread = Math.PI / 7;
+
+  ctx.beginPath();
+  ctx.moveTo(
+    tipX - ARROWHEAD_SIZE * Math.cos(angle - spread),
+    tipY - ARROWHEAD_SIZE * Math.sin(angle - spread)
+  );
+  ctx.lineTo(tipX, tipY);
+  ctx.lineTo(
+    tipX - ARROWHEAD_SIZE * Math.cos(angle + spread),
+    tipY - ARROWHEAD_SIZE * Math.sin(angle + spread)
+  );
   ctx.stroke();
 }
 
@@ -125,6 +153,30 @@ export function drawShapes(
         ctx.beginPath();
         ctx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
         ctx.stroke();
+        break;
+      }
+
+      case "line":
+        ctx.beginPath();
+        ctx.moveTo(shape.startX, shape.startY);
+        ctx.lineTo(shape.endX, shape.endY);
+        ctx.stroke();
+        break;
+
+      case "arrow": {
+        // Main shaft first, then the head at the END point. atan2 of the
+        // start->end delta gives the direction the arrow points, so the
+        // head auto-rotates with the line.
+        ctx.beginPath();
+        ctx.moveTo(shape.startX, shape.startY);
+        ctx.lineTo(shape.endX, shape.endY);
+        ctx.stroke();
+
+        const angle = Math.atan2(
+          shape.endY - shape.startY,
+          shape.endX - shape.startX
+        );
+        drawArrowhead(ctx, shape.endX, shape.endY, angle);
         break;
       }
     }

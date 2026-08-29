@@ -23,6 +23,8 @@ import {
   hitTestResizeHandle,
   resizeCursor,
   getShapeBounds,
+  getDragAnchor,
+  snapAngle,
 } from "@/app/utils/geometry";
 import type { ResizeHandleId } from "@/app/utils/geometry";
 
@@ -319,6 +321,16 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
         shape = { type: "square", x: point.x, y: point.y, size: 0 };
       } else if (t === "circle") {
         shape = { type: "circle", x: point.x, y: point.y, radius: 0 };
+      } else if (t === "line" || t === "arrow") {
+        // Both endpoints start at the press point; updateDraw moves the end
+        // as the pointer drags.
+        shape = {
+          type: t,
+          startX: point.x,
+          startY: point.y,
+          endX: point.x,
+          endY: point.y,
+        };
       }
       if (!shape) return;
 
@@ -332,7 +344,7 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
   );
 
   const updateDraw = useCallback(
-    (point: { x: number; y: number }) => {
+    (point: { x: number; y: number }, shiftKey: boolean) => {
       const shape = currentShape.current;
       if (!shape) return;
 
@@ -354,6 +366,13 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
         );
       } else if (shape.type === "circle") {
         shape.radius = Math.hypot(point.x - shape.x, point.y - shape.y);
+      } else if (shape.type === "line" || shape.type === "arrow") {
+        // Shift constrains the segment to the nearest 45° ray from start.
+        const end = shiftKey
+          ? snapAngle({ x: shape.startX, y: shape.startY }, point)
+          : point;
+        shape.endX = end.x;
+        shape.endY = end.y;
       }
 
       scheduleRender();
@@ -369,7 +388,10 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
       const degenerate =
         (shape.type === "rectangle" && shape.width === 0 && shape.height === 0) ||
         (shape.type === "square" && shape.size === 0) ||
-        (shape.type === "circle" && shape.radius === 0);
+        (shape.type === "circle" && shape.radius === 0) ||
+        ((shape.type === "line" || shape.type === "arrow") &&
+          shape.startX === shape.endX &&
+          shape.startY === shape.endY);
 
       if (degenerate) {
         discardSnapshot();
@@ -390,10 +412,7 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
     (index: number, point: { x: number; y: number }) => {
       selectedShape.current = index;
       const shape = shapesRef.current[index];
-      const anchor =
-        shape.type === "pencil"
-          ? shape.points[0]
-          : { x: shape.x, y: shape.y };
+      const anchor = getDragAnchor(shape);
 
       dragOffset.current = {
         x: point.x - anchor.x,
@@ -415,10 +434,7 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
 
       // The anchor follows the shape as it moves, so the delta is always
       // relative to the grab point captured at beginDrag.
-      const anchor =
-        shape.type === "pencil"
-          ? shape.points[0]
-          : { x: shape.x, y: shape.y };
+      const anchor = getDragAnchor(shape);
 
       const dx = point.x - dragOffset.current.x - anchor.x;
       const dy = point.y - dragOffset.current.y - anchor.y;
@@ -459,12 +475,26 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
   );
 
   const updateResize = useCallback(
-    (point: { x: number; y: number }) => {
+    (point: { x: number; y: number }, shiftKey: boolean) => {
       if (selectedShape.current === null) return;
       const shape = shapesRef.current[selectedShape.current];
       if (!shape) return;
 
-      resizeShape(shape, resizeHandle.current, point);
+      // Shift on an endpoint handle constrains the dragged endpoint to a
+      // 45° ray from the anchored opposite endpoint.
+      let target = point;
+      if (
+        shiftKey &&
+        (shape.type === "line" || shape.type === "arrow")
+      ) {
+        const anchor =
+          resizeHandle.current === "start"
+            ? { x: shape.endX, y: shape.endY }
+            : { x: shape.startX, y: shape.startY };
+        target = snapAngle(anchor, point);
+      }
+
+      resizeShape(shape, resizeHandle.current, target);
       if (JSON.stringify(shape) !== resizeStart.current) {
         resizeChanged.current = true;
       }
@@ -701,7 +731,7 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
   );
 
   const updateGesture = useCallback(
-    (clientX: number, clientY: number) => {
+    (clientX: number, clientY: number, shiftKey: boolean) => {
       const s = screenPoint(clientX, clientY);
       const w = worldPoint(clientX, clientY);
 
@@ -713,10 +743,10 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
           updateDrag(w);
           break;
         case "resize":
-          updateResize(w);
+          updateResize(w, shiftKey);
           break;
         case "draw":
-          updateDraw(w);
+          updateDraw(w, shiftKey);
           break;
         default:
           break;
@@ -799,7 +829,7 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
         if (toolRef.current === "eraser") scheduleRender();
       }
 
-      if (gestureRef.current) updateGesture(e.clientX, e.clientY);
+      if (gestureRef.current) updateGesture(e.clientX, e.clientY, e.shiftKey);
     };
 
     const onWindowMouseUp = () => endGesture();
@@ -974,7 +1004,7 @@ function DrawCanvas({ tool, zoom, onZoomChange, ref }: Props) {
     }
     if (e.touches.length === 1) {
       const touch = e.touches[0];
-      updateGesture(touch.clientX, touch.clientY);
+      updateGesture(touch.clientX, touch.clientY, false);
     }
   };
 
