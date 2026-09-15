@@ -59,7 +59,7 @@ This allows users to move around the drawing space without requiring an extremel
 
 ---
 
-## 📷 Camera System
+## Camera System
 
 The application uses a camera to determine which portion of the world is visible.
 
@@ -293,7 +293,7 @@ Hit testing is used for:
 
 ---
 
-# 🖱️ Shape Selection
+# Shape Selection
 
 When the Select tool is active, the application checks whether the pointer is over a shape.
 
@@ -472,7 +472,7 @@ Because the points are stored as data, pencil strokes can also be moved and pers
 
 ---
 
-#  Lines and ➡️ Arrows
+#  Lines and Arrows
 
 Workboard supports straight lines using start and end coordinates.
 
@@ -697,7 +697,7 @@ This separation keeps localStorage lightweight.
 
 ---
 
-# 🔄 Persistence Lifecycle
+#  Persistence Lifecycle
 
 When the application starts:
 
@@ -905,7 +905,7 @@ The exact structure may evolve as the project grows.
 
 ---
 
-# 🚀 Getting Started
+# Getting Started
 
 ## 1. Clone the repository
 
