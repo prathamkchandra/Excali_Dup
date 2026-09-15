@@ -6,11 +6,11 @@ Workboard provides an interactive workspace where users can draw, select, move, 
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🎨 Drawing Tools
+###  Drawing Tools
 
-- ✏️ Pencil / Freehand drawing
+-  Pencil / Freehand drawing
 - ▭ Rectangle
 - ⬜ Square
 - ◯ Circle
@@ -19,7 +19,7 @@ Workboard provides an interactive workspace where users can draw, select, move, 
 - 🖱️ Select
 - 🧹 Eraser
 
-### 🛠️ Editing
+###  Editing
 
 - Select individual shapes
 - Move shapes by dragging
@@ -98,7 +98,7 @@ Moving the View
 
 ---
 
-## 🌍 World Coordinates vs Screen Coordinates
+##  World Coordinates vs Screen Coordinates
 
 Workboard separates drawing coordinates into two systems.
 
@@ -138,7 +138,7 @@ This architecture makes panning and future camera features much easier to implem
 
 ---
 
-# 🧱 Architecture
+#  Architecture
 
 Workboard separates application state, user interaction, geometry calculations, rendering, and persistence.
 
@@ -188,7 +188,7 @@ Workboard
 
 ---
 
-# 🧩 Shape-Based Architecture
+#  Shape-Based Architecture
 
 Workboard does not use the canvas pixels as the application's source of truth.
 
@@ -265,7 +265,7 @@ This design makes selection, movement, resizing, undo/redo, and persistence poss
 
 ---
 
-# 🎯 Shape Hit Testing
+#  Shape Hit Testing
 
 HTML5 Canvas does not automatically know which application object the user clicked.
 
@@ -323,7 +323,7 @@ This allows selection and camera movement to coexist naturally.
 
 ---
 
-# ✋ Shape Dragging
+#  Shape Dragging
 
 When a selected shape is dragged, Workboard calculates the pointer offset relative to the shape.
 
@@ -365,7 +365,7 @@ Canvas Redraw
 
 ---
 
-# 📐 Shape Resizing
+#  Shape Resizing
 
 Workboard supports resize handles for editable shapes.
 
@@ -402,7 +402,7 @@ This provides type safety when working with different shape types.
 
 ---
 
-# 🧹 Eraser
+#  Eraser
 
 Workboard uses an **object-based click-to-erase** approach.
 
@@ -433,7 +433,7 @@ This makes the eraser compatible with the application's shape-based architecture
 
 ---
 
-# ✏️ Pencil / Freehand Drawing
+#  Pencil / Freehand Drawing
 
 The Pencil tool collects pointer positions while the user draws.
 
@@ -472,7 +472,7 @@ Because the points are stored as data, pencil strokes can also be moved and pers
 
 ---
 
-# ➖ Lines and ➡️ Arrows
+#  Lines and ➡️ Arrows
 
 Workboard supports straight lines using start and end coordinates.
 
@@ -513,7 +513,7 @@ The endpoint architecture also makes line and arrow resizing straightforward.
 
 ---
 
-# 🎨 Canvas Rendering
+#  Canvas Rendering
 
 Workboard uses the HTML5 Canvas 2D API.
 
@@ -560,7 +560,7 @@ Draw Tool Cursor
 
 ---
 
-# ⚡ RequestAnimationFrame Rendering
+# RequestAnimationFrame Rendering
 
 Workboard uses `requestAnimationFrame()` to coordinate rendering updates.
 
@@ -591,7 +591,7 @@ This is especially useful for continuous interactions such as:
 
 ---
 
-# ↩️ Undo / Redo
+# Undo / Redo
 
 Workboard maintains drawing history using shape snapshots.
 
@@ -628,7 +628,7 @@ Because the application stores structured shape data, undo/redo can operate on o
 
 ---
 
-# 💾 Data Persistence
+#  Data Persistence
 
 Workboard uses browser storage to persist application data.
 
@@ -650,7 +650,7 @@ Workboard
 
 ---
 
-# 🗄️ IndexedDB
+#  IndexedDB
 
 IndexedDB is used as the primary persistent storage for drawing data.
 
@@ -681,7 +681,7 @@ IndexedDB is useful here because Workboard may need to store:
 
 ---
 
-# 💡 localStorage
+#  localStorage
 
 localStorage is used for small pieces of application state and preferences.
 
@@ -737,81 +737,7 @@ IndexedDB
 
 ---
 
-# ⚛️ React and useRef
-
-Workboard uses React `useRef` for values that need to persist between renders without forcing a React component re-render whenever they change.
-
-For example:
-
-```ts
-const shapesRef = useRef<Shape[]>([]);
-```
-
-```ts
-const cameraRef = useRef<Camera>({
-  x: 0,
-  y: 0
-});
-```
-
-```ts
-const selectedShape = useRef<number | null>(null);
-```
-
-```ts
-const currentShape = useRef<Shape | null>(null);
-```
-
-For example:
-
-```ts
-useRef<Camera>({
-  x: 0,
-  y: 0
-});
-```
-
-means:
-
-- `useRef` creates a React ref
-- `<Camera>` tells TypeScript what type the ref stores
-- `{ x: 0, y: 0 }` is the initial value
-- The current value is accessed through:
-
-```ts
-cameraRef.current
-```
-
----
-
-# 🧠 Why useRef Is Useful
-
-Drawing applications generate many high-frequency events:
-
-```text
-mousemove
-touchmove
-drag
-resize
-pan
-```
-
-Updating React state for every movement can cause unnecessary component rendering.
-
-Using refs allows frequently changing internal values to be updated directly.
-
-Example:
-
-```ts
-cameraRef.current.x += deltaX;
-cameraRef.current.y += deltaY;
-```
-
-The application can then explicitly schedule canvas rendering.
-
----
-
-# 🎛️ Tool System
+#  Tool System
 
 Workboard uses a typed tool architecture.
 
@@ -854,7 +780,7 @@ Eraser + Click
 
 ---
 
-# 🤏 Touch Support
+#  Touch Support
 
 Workboard includes touch interaction support for tablets and mobile devices.
 
@@ -876,7 +802,7 @@ so the application can manage pointer and touch interactions itself.
 
 ---
 
-# 📱 Responsive Design
+#  Responsive Design
 
 Workboard is designed to work across:
 
@@ -921,7 +847,7 @@ This gives immediate visual feedback about the current interaction mode.
 
 ---
 
-# 📁 Project Structure
+#  Project Structure
 
 A simplified project structure is:
 
@@ -1013,7 +939,7 @@ http://localhost:3000
 
 ---
 
-# 🧪 Development Workflow
+#  Development Workflow
 
 The main drawing workflow follows this architecture:
 
@@ -1059,7 +985,7 @@ IndexedDB
 
 ---
 
-# ⌨️ Keyboard Shortcuts
+#  Keyboard Shortcuts
 
 Current keyboard interactions include:
 
@@ -1074,7 +1000,7 @@ Additional shortcuts can be added as the application grows.
 
 ---
 
-# 🧠 Design Philosophy
+#  Design Philosophy
 
 Workboard follows several important architectural principles.
 
@@ -1127,7 +1053,7 @@ This separation allows the drawing to be restored independently of the rendering
 
 ---
 
-# 🔥 Current Implementation Status
+#  Current Implementation Status
 
 ### Core Canvas
 
@@ -1196,7 +1122,7 @@ This separation allows the drawing to be restored independently of the rendering
 
 ---
 
-# 🚧 Future Improvements
+# Future Improvements
 
 Planned improvements include:
 
@@ -1218,7 +1144,7 @@ Planned improvements include:
 
 ---
 
-# 🤝 Contributing
+#  Contributing
 
 Contributions, suggestions, and improvements are welcome.
 
@@ -1232,7 +1158,7 @@ Make your changes, test them locally, commit your changes, and open a pull reque
 
 ---
 
-# 📄 License
+#  License
 
 This project is currently available under the license specified in the repository.
 
@@ -1240,7 +1166,7 @@ Add a license file such as `MIT` when the project is ready for public distributi
 
 ---
 
-# 👨‍💻 Author
+#  Author
 
 **Pratham**
 
@@ -1250,7 +1176,7 @@ An interactive browser-based drawing and diagramming application inspired by mod
 
 ---
 
-## ⭐ Project Goal
+##  Project Goal
 
 The long-term goal of Workboard is to provide a lightweight, extensible, browser-based drawing environment with the flexibility of an infinite canvas and the simplicity of a diagramming tool.
 
